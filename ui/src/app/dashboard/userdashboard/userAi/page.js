@@ -44,7 +44,7 @@ export default function InteractPage() {
       </h1>
 
       <div className="bg-white shadow-lg rounded-2xl p-4 border border-gray-200">
-        <ChatBox userId={userId} />
+        <ChatBox userId={parseInt(userId)} />
       </div>
 
       {/* ✅ Back Button below the chat box */}

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { toastrError } from "@/components/ui/toaster/toaster";
 
 const FileUpload = ({ onFileSelect }) => {
   const [fileName, setFileName] = useState("");
@@ -13,7 +14,8 @@ const FileUpload = ({ onFileSelect }) => {
       setFileName(file.name);
       onFileSelect(file);
     } else {
-      alert("Please upload PDF or DOCX only.");
+      toastrError("Please upload PDF or DOCX only.");
+      e.target.value = ""; // Reset file input
     }
   };
 

@@ -1,33 +1,44 @@
 const db = require('../config/mysql.js');
+const bcrypt = require('bcryptjs');
 
-// Create new user
-const createUser = (data, callback) => {
-  const { name, email, phone, role } = data;
-  const query = "INSERT INTO users1 (name, email, phone, role) VALUES (?, ?, ?, ?)";
-  db.query(query, [name, email, phone, role], callback);
+// Create new user with password hash
+const createUser = async (data) => {
+  const { name, email, phone, password, role } = data;
+  const passwordHash = await bcrypt.hash(password, 10);
+  const query = "INSERT INTO users (name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?)";
+  const [result] = await db.query(query, [name, email, phone || null, passwordHash, role || 'user']);
+  return result;
 };
 
 // Find user by email
-const findUserByEmail = (email, callback) => {
-  const query = "SELECT * FROM users1 WHERE email = ?";
-  db.query(query, [email], callback);
+const findUserByEmail = async (email) => {
+  const query = "SELECT * FROM users WHERE email = ?";
+  const [rows] = await db.query(query, [email]);
+  return rows[0] || null;
 };
 
-// Save OTP
-const saveOTP = (email, otp, callback) => {
-  const query = "UPDATE users1 SET otp = ?, otp_expiry = DATE_ADD(NOW(), INTERVAL 5 MINUTE) WHERE email = ?";
-  db.query(query, [otp, email], callback);
+// Find user by ID
+const findUserById = async (id) => {
+  const query = "SELECT id, name, email, phone, role, is_verified, is_active, created_at FROM users WHERE id = ?";
+  const [rows] = await db.query(query, [id]);
+  return rows[0] || null;
 };
 
-// Verify OTP
-const verifyOTP = (email, otp, callback) => {
-  const query = "SELECT * FROM users1 WHERE email = ? AND otp = ? AND otp_expiry > NOW()";
-  db.query(query, [email, otp], callback);
+// Verify password
+const verifyPassword = async (password, passwordHash) => {
+  return await bcrypt.compare(password, passwordHash);
+};
+
+// Update user verification status
+const updateUserVerification = async (email, isVerified = true) => {
+  const query = "UPDATE users SET is_verified = ? WHERE email = ?";
+  await db.query(query, [isVerified ? 1 : 0, email]);
 };
 
 module.exports = {
   createUser,
   findUserByEmail,
-  saveOTP,
-  verifyOTP
+  findUserById,
+  verifyPassword,
+  updateUserVerification
 };

@@ -58,8 +58,18 @@
 }
 
 /* Global Styles */
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+/* Reset only specific elements, not all elements with Tailwind classes */
+body,
+h1, h2, h3, h4, h5, h6,
+p, ul, ol, li,
+blockquote, figure, figcaption,
+dl, dd {
   margin: 0;
   padding: 0;
 }
@@ -83,37 +93,30 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   line-height: 1.3;
   letter-spacing: -0.025em;
-  color: var(--gray-900);
-  margin-bottom: 1.5rem;
 }
 
 h1 { 
   font-size: 2.5rem; 
-  margin-bottom: 2rem;
 }
 
 @media (min-width: 768px) {
   h1 {
     font-size: 3rem;
-    margin-bottom: 2.5rem;
   }
 }
 
 h2 { 
   font-size: 2rem;
-  margin-bottom: 1.75rem;
 }
 
 @media (min-width: 768px) {
   h2 {
     font-size: 2.25rem;
-    margin-bottom: 2rem;
   }
 }
 
 h3 { 
   font-size: 1.75rem;
-  margin-bottom: 1.5rem;
 }
 
 h4 { font-size: 1.5rem; }
@@ -121,7 +124,6 @@ h5 { font-size: 1.25rem; }
 h6 { font-size: 1rem; }
 
 p {
-  margin-bottom: 1.25rem;
   line-height: 1.8;
 }
 
@@ -319,12 +321,12 @@ p {
 .container-professional {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 8px 2rem;
 }
 
 @media (min-width: 768px) {
   .container-professional {
-    padding: 0 3rem;
+    padding: 8px 3rem;
   }
 }
 

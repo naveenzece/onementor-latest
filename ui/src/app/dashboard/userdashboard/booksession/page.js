@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
+import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 import { ArrowLeftIcon, CalendarDaysIcon, ClockIcon, CurrencyRupeeIcon } from "@heroicons/react/24/outline";
 
 const BookSessionPage = () => {
@@ -106,18 +107,90 @@ const BookSessionPage = () => {
 
   const handleBooking = async () => {
     if (!selectedDate || !selectedTime) {
-      alert("Please select both date and time");
+      toastrError("Please select both date and time");
+      return;
+    }
+
+    const userId = localStorage.getItem("userId");
+    if (!userId) {
+      toastrError("Please login first");
+      router.push("/login");
       return;
     }
 
     setLoading(true);
     
-    // Simulate booking process
-    setTimeout(() => {
+    try {
+      // First, get available slots for the mentor
+      const slotsRes = await fetch(
+        `http://localhost:8001/api/mentor/slots/mentor/${coachId}?date=${selectedDate}&is_booked=0&is_active=1`,
+        { credentials: 'include' }
+      );
+      
+      if (!slotsRes.ok) {
+        throw new Error("Failed to fetch available slots");
+      }
+      
+      const slots = await slotsRes.json();
+      
+      // Find matching slot
+      const matchingSlot = slots.find(slot => {
+        const slotTime = slot.start_time.substring(0, 5); // Get HH:MM format
+        return slotTime === selectedTime;
+      });
+
+      if (!matchingSlot) {
+        toastrError("Selected slot is no longer available. Please choose another time.");
+        setLoading(false);
+        return;
+      }
+
+      // Create booking
+      const bookingData = {
+        user_id: parseInt(userId),
+        mentor_id: parseInt(coachId),
+        slot_id: matchingSlot.id,
+        notes: `Session type: ${sessionType}`
+      };
+
+      const bookingRes = await fetch("http://localhost:8001/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify(bookingData),
+      });
+
+      if (!bookingRes.ok) {
+        const error = await bookingRes.json();
+        throw new Error(error.error || "Failed to create booking");
+      }
+
+      const bookingResult = await bookingRes.json();
+      
+        // Redirect to payment if payment URL is provided
+        if (bookingResult.payment && bookingResult.payment.payment_url) {
+          // Store booking info for after payment
+          localStorage.setItem("pendingBooking", JSON.stringify({
+            bookingId: bookingResult.booking.id,
+            orderId: bookingResult.payment.order_id
+          }));
+          
+          toastrSuccess("Booking created! Redirecting to payment...");
+          
+          // Redirect to payment
+          setTimeout(() => {
+            window.location.href = bookingResult.payment.payment_url;
+          }, 1000);
+        } else {
+          toastrSuccess("Booking created! Please complete payment.");
+          router.push(`/dashboard/userdashboard/userpayment?bookingId=${bookingResult.booking.id}`);
+        }
+      } catch (err) {
+        console.error("Booking error:", err);
+        toastrError(err.message || "Failed to book session. Please try again.");
+    } finally {
       setLoading(false);
-      alert(`Session booked successfully with ${coach.name} on ${selectedDate} at ${selectedTime}`);
-      router.push('/dashboard/user');
-    }, 2000);
+    }
   };
 
   if (!coach) {

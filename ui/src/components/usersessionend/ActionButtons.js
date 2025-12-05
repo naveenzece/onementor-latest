@@ -1,14 +1,36 @@
+"use client";
+
 import React from "react";
+import { useRouter } from "next/navigation";
+import { toastrSuccess, toastrInfo } from "@/components/ui/toaster/toaster";
 
 const ActionButtons = () => {
-  const handleLogout = () => {
-    // Implement logout logic here
-    alert("Logged out successfully!");
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("http://localhost:8001/api/auth/logout", {
+        method: "POST",
+        credentials: 'include',
+      });
+      
+      if (res.ok) {
+        localStorage.clear();
+        toastrSuccess("Logged out successfully!");
+        setTimeout(() => {
+          router.push("/login");
+        }, 1000);
+      }
+    } catch (err) {
+      console.error("Logout error:", err);
+      localStorage.clear();
+      router.push("/login");
+    }
   };
 
   const handleBookAgain = () => {
-    // Redirect to booking page
-    alert("Redirecting to booking page...");
+    toastrInfo("Redirecting to booking page...");
+    router.push("/dashboard/userdashboard/coachdiscovery");
   };
 
   return (

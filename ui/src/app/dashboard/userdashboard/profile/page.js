@@ -28,7 +28,16 @@ export default function ProfileSetup() {
       return;
     }
 
+    // Get user_id from localStorage
+    const userId = localStorage.getItem("userId");
+    if (!userId) {
+      toastrError("User ID not found. Please login again.");
+      router.push("/login");
+      return;
+    }
+
     const formData = new FormData();
+    formData.append("user_id", userId); // Add user_id to FormData
     formData.append("skills", JSON.stringify(skills));
     formData.append("interests", JSON.stringify(interests));
     formData.append("resume", resume);
@@ -37,10 +46,14 @@ export default function ProfileSetup() {
     try {
       const res = await fetch("http://localhost:8001/api/profile", {
         method: "POST",
+        credentials: 'include', // Include cookies for session
         body: formData,
       });
 
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+      }
 
       const result = await res.json();
       toastrSuccess(result.message || "Profile submitted successfully!");
@@ -51,7 +64,7 @@ export default function ProfileSetup() {
       }, 1500);
     } catch (err) {
       console.error("Error submitting profile:", err);
-      toastrError("Error submitting profile. Please try again.");
+      toastrError(err.message || "Error submitting profile. Please try again.");
     } finally {
       setLoading(false);
     }

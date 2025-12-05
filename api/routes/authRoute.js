@@ -1,19 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const { createAndSendOtp, verifyOtp } = require('../services/otpservice');
+const { findUserByEmail, verifyPassword, updateUserVerification } = require('../models/user');
 const pool = require('../config/mysql');
 const jwt = require('jsonwebtoken');
 
+// Send OTP for login or verification
 router.post('/send-otp', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
 
-    // ✅ Check if email exists in users1 table
-    const [rows] = await pool.query(`SELECT id, name, role FROM users1 WHERE email = ? LIMIT 1`, [email]);
+    // Check if email exists in users table
+    const user = await findUserByEmail(email);
     
-    if (!rows.length) {
-      // Email not found in DB
+    if (!user) {
       return res.status(404).json({ error: 'Email not registered. Please signup first.' });
     }
 
@@ -26,9 +27,116 @@ router.post('/send-otp', async (req, res) => {
   }
 });
 
+// Login with email and password
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
 
+    // Find user
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-// Add this to your existing router (or create a new one)
+    // Check if user is active
+    if (!user.is_active) {
+      return res.status(403).json({ error: 'Account is deactivated' });
+    }
+
+    // Verify password
+    const isValidPassword = await verifyPassword(password, user.password_hash);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Store user info in session
+    req.session.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    };
+
+    // Issue JWT token
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '7d' }
+    );
+
+    return res.json({
+      token,
+      message: 'Logged in successfully',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        is_verified: user.is_verified
+      }
+    });
+  } catch (err) {
+    console.error('Error login:', err);
+    return res.status(500).json({ error: 'Unable to login' });
+  }
+});
+
+// Verify OTP (for email verification or password reset)
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ error: 'email and otp required' });
+
+    const result = await verifyOtp(email, otp);
+    if (result.error) return res.status(400).json({ error: result.error });
+
+    // Get user from DB
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update verification status if not already verified
+    if (!user.is_verified) {
+      await updateUserVerification(email, true);
+    }
+
+    // Store user info in session
+    req.session.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    };
+
+    // Issue JWT token
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '7d' }
+    );
+
+    return res.json({
+      token,
+      message: 'OTP verified successfully',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        is_verified: true
+      }
+    });
+  } catch (err) {
+    console.error('Error verify-otp:', err);
+    return res.status(500).json({ error: 'Unable to verify OTP' });
+  }
+});
+
+// Logout
 router.post('/logout', (req, res) => {
   if (!req.session) return res.status(400).json({ error: 'No active session' });
 
@@ -38,53 +146,9 @@ router.post('/logout', (req, res) => {
       return res.status(500).json({ error: 'Failed to logout' });
     }
 
-    // Clear the session cookie
-    res.clearCookie('connect.sid'); // adjust if you use a different cookie name
+    res.clearCookie('connect.sid');
     return res.json({ message: 'Logged out successfully' });
   });
-});
-
-
-
-
-router.post('/verify-otp', async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    if (!email || !otp) return res.status(400).json({ error: 'email and otp required' });
-
-    const result = await verifyOtp(email, otp);
-    if (result.error) return res.status(400).json({ error: result.error });
-
-    // Get user role from DB
-    const [rows] = await pool.query(`SELECT role, id, name FROM users1 WHERE email = ? LIMIT 1`, [email]);
-    const user = rows && rows.length ? rows[0] : { role: 'User', id: null, name: null };
-
-    // ✅ Store user info in session
-    req.session.user = {
-      id: user.id,
-      name: user.name,
-      email,
-      role: user.role
-    };
-     
-console.log('Session after login:', req.session);
-    // Optional: still issue JWT if needed
-    const token = jwt.sign({ email, role: user.role }, process.env.JWT_SECRET || 'secret', {
-      expiresIn: '7d',
-    });
-
-    return res.json({
-      token,
-      message: 'Logged in',
-      role: user.role,
-      id:user.id,
-      email
-    });
-
-  } catch (err) {
-    console.error('Error verify-otp:', err);
-    return res.status(500).json({ error: 'Unable to verify OTP' });
-  }
 });
 
 module.exports = router;

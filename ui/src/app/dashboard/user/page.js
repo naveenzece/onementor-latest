@@ -22,7 +22,7 @@ export default function UserDashboard() {
     router.push("/login");
   };
 
-  const userName = typeof window !== 'undefined' ? localStorage.getItem('userEmail')?.split('@')[0] || 'User' : 'User';
+  const userName = typeof window !== 'undefined' ? localStorage.getItem('userName') || 'User' : 'User';
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -40,12 +40,6 @@ export default function UserDashboard() {
                 Continue your learning journey and achieve your goals
               </p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="btn btn-secondary px-8 py-3 self-start md:self-auto"
-            >
-              Logout
-            </button>
           </div>
         </div>
 

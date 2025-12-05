@@ -13,6 +13,8 @@ export default function Signup() {
     name: "",
     email: "",
     phone: "",
+    password: "",
+    confirmPassword: "",
     role: "",
   });
   const [loading, setLoading] = useState(false);
@@ -25,24 +27,44 @@ export default function Signup() {
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    const { name, email, role } = formData;
+    const { name, email, password, confirmPassword, role } = formData;
 
-    if (!name || !email || !role) {
+    if (!name || !email || !password || !role) {
       toastrError("Please fill all required fields!");
+      return;
+    }
+
+    if (password.length < 6) {
+      toastrError("Password must be at least 6 characters long!");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toastrError("Passwords do not match!");
       return;
     }
 
     setLoading(true);
     try {
-      const response = await createUser(formData);
+      const signupData = {
+        name,
+        email,
+        phone: formData.phone || null,
+        password,
+        role: role === 'coach' ? 'mentor' : 'user' // Map 'coach' to 'mentor'
+      };
 
-      if (response.message === "User created successfully") {
-        toastrSuccess("Account created successfully! Please login.");
+      const response = await createUser(signupData);
+
+      if (response.error) {
+        toastrError(response.error);
+      } else if (response.message) {
+        toastrSuccess(response.message || "Account created successfully! Please verify your email and login.");
         setTimeout(() => {
           window.location.href = "/login";
-        }, 1500);
+        }, 2000);
       } else {
-        toastrError(response.message || "Signup failed");
+        toastrError("Signup failed");
       }
     } catch (err) {
       console.error("Signup error:", err);
@@ -199,6 +221,40 @@ export default function Signup() {
                   onChange={handleChange}
                   className="input-professional"
                   placeholder="+1 (555) 000-0000"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-3">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="input-professional"
+                  placeholder="At least 6 characters"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-3">
+                  Confirm Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="input-professional"
+                  placeholder="Re-enter your password"
+                  required
+                  minLength={6}
                 />
               </div>
 

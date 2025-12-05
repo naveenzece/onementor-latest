@@ -22,21 +22,43 @@ const CoachesPage = () => {
     setError(null);
 
     try {
+      // Map old filter names to new API filter names
+      const apiFilters = {
+        category: filters.expertise,
+        skill: filters.skill,
+        date: filters.date
+      };
+
       const query = new URLSearchParams(
-        Object.fromEntries(Object.entries(filters).filter(([_, value]) => value))
+        Object.fromEntries(Object.entries(apiFilters).filter(([_, value]) => value))
       ).toString();
 
-      const res = await fetch(`http://localhost:8001/api/coaches?${query}`);
+      const res = await fetch(`http://localhost:8001/api/mentors?${query}`, {
+        credentials: 'include'
+      });
 
       if (!res.ok) {
-        const message = await res.text();
-        throw new Error(`Failed to fetch coaches: ${res.status} ${message}`);
+        const errorData = await res.json();
+        throw new Error(errorData.error || `Failed to fetch mentors: ${res.status}`);
       }
 
       const data = await res.json();
       
-      // If no coaches returned from API, use mock data for demonstration
-      if (!data || data.length === 0) {
+      // Transform API response to match component expectations
+      const transformedData = data.map(mentor => ({
+        id: mentor.user_id,
+        name: mentor.name,
+        expertise: mentor.category,
+        skills: Array.isArray(mentor.skills) ? mentor.skills.join(', ') : mentor.skills,
+        rating: mentor.rating || 0,
+        sessions_completed: mentor.total_sessions || 0,
+        price: mentor.hourly_rate ? `₹${mentor.hourly_rate}` : '₹0',
+        bio: mentor.bio || '',
+        available_slots: mentor.available_slots_count || 0
+      }));
+      
+      // If no mentors returned from API, use empty array
+      if (!transformedData || transformedData.length === 0) {
         const mockCoaches = [
           {
             id: 1,

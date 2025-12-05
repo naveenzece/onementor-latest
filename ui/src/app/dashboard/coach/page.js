@@ -22,7 +22,7 @@ export default function CoachDashboard() {
     router.push("/login");
   };
 
-  const coachName = typeof window !== 'undefined' ? localStorage.getItem('userEmail')?.split('@')[0] || 'Coach' : 'Coach';
+  const coachName = typeof window !== 'undefined' ? localStorage.getItem('userName') || 'Coach' : 'Coach';
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -40,12 +40,6 @@ export default function CoachDashboard() {
                 Welcome back, {coachName}! Manage your coaching sessions and grow your impact.
               </p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="btn btn-secondary px-8 py-3 self-start md:self-auto"
-            >
-              Logout
-            </button>
           </div>
         </div>
 
