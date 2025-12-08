@@ -1,4 +1,5 @@
 "use client";
+import { useState, useEffect } from "react";
 import Card from "@/components/card/card";
 import { 
   UserIcon, 
@@ -16,13 +17,18 @@ import { useRouter } from "next/navigation";
 
 export default function UserDashboard() {
   const router = useRouter();
+  const [userName, setUserName] = useState('User');
+
+  useEffect(() => {
+    // Get user name from localStorage on client side only
+    const name = localStorage.getItem('userName') || 'User';
+    setUserName(name);
+  }, []);
 
   const handleLogout = () => {
     localStorage.clear();
     router.push("/login");
   };
-
-  const userName = typeof window !== 'undefined' ? localStorage.getItem('userEmail')?.split('@')[0] || 'User' : 'User';
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -40,12 +46,6 @@ export default function UserDashboard() {
                 Continue your learning journey and achieve your goals
               </p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="btn btn-secondary px-8 py-3 self-start md:self-auto"
-            >
-              Logout
-            </button>
           </div>
         </div>
 

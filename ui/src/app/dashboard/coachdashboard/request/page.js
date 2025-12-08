@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation"; // ✅ import useRouter
+import { useRouter } from "next/navigation";
+import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 import RequestCard from "@/components/coach/request/RequestCard";
 
 const RequestsPage = () => {
@@ -56,9 +57,10 @@ const RequestsPage = () => {
       setRequests((prev) =>
         prev.map((req) => (req.id === id ? { ...req, status: action } : req))
       );
+      toastrSuccess(`Request ${action} successfully!`);
     } catch (err) {
       console.error("Error updating status:", err);
-      alert("Failed to update request status. Please try again.");
+      toastrError("Failed to update request status. Please try again.");
     }
   };
 

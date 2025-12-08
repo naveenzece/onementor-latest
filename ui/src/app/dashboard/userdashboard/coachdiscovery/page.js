@@ -7,6 +7,7 @@ import FilterBar from "@/components/userdiscovery/FilterBar";
 import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { ArrowLeftIcon, MagnifyingGlassIcon, FunnelIcon } from "@heroicons/react/24/outline";
+import { discoverMentors } from "@/services/discovery/discovery";
 
 const CoachesPage = () => {
   const [coaches, setCoaches] = useState([]);
@@ -22,170 +23,68 @@ const CoachesPage = () => {
     setError(null);
 
     try {
-      const query = new URLSearchParams(
-        Object.fromEntries(Object.entries(filters).filter(([_, value]) => value))
-      ).toString();
+      // Map filter names to API filter names
+      const apiFilters = {
+        category: filters.expertise || undefined,
+        skill: filters.skill || undefined,
+        date: filters.date || undefined
+      };
 
-      const res = await fetch(`http://localhost:8001/api/coaches?${query}`);
+      // Remove undefined values
+      Object.keys(apiFilters).forEach(key => {
+        if (apiFilters[key] === undefined || apiFilters[key] === '') {
+          delete apiFilters[key];
+        }
+      });
 
-      if (!res.ok) {
-        const message = await res.text();
-        throw new Error(`Failed to fetch coaches: ${res.status} ${message}`);
-      }
+      const response = await discoverMentors(apiFilters);
 
-      const data = await res.json();
-      
-      // If no coaches returned from API, use mock data for demonstration
-      if (!data || data.length === 0) {
-        const mockCoaches = [
-          {
-            id: 1,
-            name: "Dr. Sarah Johnson",
-            expertise: "Career Development",
-            skills: "Leadership, Communication, Strategic Planning",
-            rating: 4.9,
-            sessions_completed: 150,
-            price: "₹1500",
-            bio: "Experienced career coach with 10+ years helping professionals advance their careers.",
-            image: "/images/coach1.jpg"
-          },
-          {
-            id: 2,
-            name: "Michael Chen",
-            expertise: "Technology Leadership",
-            skills: "Software Development, Team Management, Product Strategy",
-            rating: 4.8,
-            sessions_completed: 120,
-            price: "₹2000",
-            bio: "Tech industry veteran specializing in leadership development for software teams.",
-            image: "/images/coach2.jpg"
-          },
-          {
-            id: 3,
-            name: "Emily Rodriguez",
-            expertise: "Personal Development",
-            skills: "Goal Setting, Time Management, Work-Life Balance",
-            rating: 4.9,
-            sessions_completed: 200,
-            price: "₹1200",
-            bio: "Certified life coach focused on helping individuals achieve personal and professional goals.",
-            image: "/images/coach3.jpg"
-          },
-          {
-            id: 4,
-            name: "David Kumar",
-            expertise: "Business Strategy",
-            skills: "Entrepreneurship, Marketing, Financial Planning",
-            rating: 4.7,
-            sessions_completed: 80,
-            price: "₹2500",
-            bio: "Serial entrepreneur and business consultant with expertise in scaling startups.",
-            image: "/images/coach4.jpg"
-          },
-          {
-            id: 5,
-            name: "Lisa Thompson",
-            expertise: "Communication Skills",
-            skills: "Public Speaking, Negotiation, Conflict Resolution",
-            rating: 4.8,
-            sessions_completed: 160,
-            price: "₹1800",
-            bio: "Communication expert helping professionals improve their interpersonal skills.",
-            image: "/images/coach5.jpg"
-          },
-          {
-            id: 6,
-            name: "James Wilson",
-            expertise: "Financial Planning",
-            skills: "Investment Strategy, Retirement Planning, Wealth Management",
-            rating: 4.9,
-            sessions_completed: 90,
-            price: "₹3000",
-            bio: "Certified financial planner with 15+ years of experience in wealth management.",
-            image: "/images/coach6.jpg"
-          }
-        ];
-        setCoaches(mockCoaches);
+      if (response.error) {
+        setError(response.error);
+        setCoaches([]);
         return;
       }
 
-      const uniqueCoaches = Array.from(new Map(data.map(c => [c.id, c])).values());
+      // Transform API response to match component expectations
+      const transformedData = (response || []).map(mentor => {
+        // Handle skills - can be JSON string, array, or null
+        let skillsText = '';
+        if (mentor.skills) {
+          try {
+            const skillsArray = typeof mentor.skills === 'string' 
+              ? JSON.parse(mentor.skills) 
+              : mentor.skills;
+            skillsText = Array.isArray(skillsArray) 
+              ? skillsArray.join(', ') 
+              : (typeof mentor.skills === 'string' ? mentor.skills : '');
+          } catch (e) {
+            skillsText = typeof mentor.skills === 'string' ? mentor.skills : '';
+          }
+        }
+
+        return {
+          id: mentor.user_id,
+          name: mentor.name || mentor.username || 'Unknown',
+          expertise: mentor.category || 'Not specified',
+          skills: skillsText,
+          rating: mentor.rating || 0,
+          sessions_completed: mentor.total_sessions || 0,
+          price: mentor.hourly_rate ? `₹${parseFloat(mentor.hourly_rate).toLocaleString('en-IN')}` : '₹0',
+          bio: mentor.bio || '',
+          available_slots: mentor.available_slots_count || 0
+        };
+      });
+
+      // Remove duplicates based on id
+      const uniqueCoaches = Array.from(
+        new Map(transformedData.map(coach => [coach.id, coach])).values()
+      );
+
       setCoaches(uniqueCoaches);
     } catch (err) {
       console.error("Error fetching coaches:", err);
-      
-      // Use mock data as fallback when API fails
-      const mockCoaches = [
-        {
-          id: 1,
-          name: "Dr. Sarah Johnson",
-          expertise: "Career Development",
-          skills: "Leadership, Communication, Strategic Planning",
-          rating: 4.9,
-          sessions_completed: 150,
-          price: "₹1500",
-          bio: "Experienced career coach with 10+ years helping professionals advance their careers.",
-          image: "/images/coach1.jpg"
-        },
-        {
-          id: 2,
-          name: "Michael Chen",
-          expertise: "Technology Leadership",
-          skills: "Software Development, Team Management, Product Strategy",
-          rating: 4.8,
-          sessions_completed: 120,
-          price: "₹2000",
-          bio: "Tech industry veteran specializing in leadership development for software teams.",
-          image: "/images/coach2.jpg"
-        },
-        {
-          id: 3,
-          name: "Emily Rodriguez",
-          expertise: "Personal Development",
-          skills: "Goal Setting, Time Management, Work-Life Balance",
-          rating: 4.9,
-          sessions_completed: 200,
-          price: "₹1200",
-          bio: "Certified life coach focused on helping individuals achieve personal and professional goals.",
-          image: "/images/coach3.jpg"
-        },
-        {
-          id: 4,
-          name: "David Kumar",
-          expertise: "Business Strategy",
-          skills: "Entrepreneurship, Marketing, Financial Planning",
-          rating: 4.7,
-          sessions_completed: 80,
-          price: "₹2500",
-          bio: "Serial entrepreneur and business consultant with expertise in scaling startups.",
-          image: "/images/coach4.jpg"
-        },
-        {
-          id: 5,
-          name: "Lisa Thompson",
-          expertise: "Communication Skills",
-          skills: "Public Speaking, Negotiation, Conflict Resolution",
-          rating: 4.8,
-          sessions_completed: 160,
-          price: "₹1800",
-          bio: "Communication expert helping professionals improve their interpersonal skills.",
-          image: "/images/coach5.jpg"
-        },
-        {
-          id: 6,
-          name: "James Wilson",
-          expertise: "Financial Planning",
-          skills: "Investment Strategy, Retirement Planning, Wealth Management",
-          rating: 4.9,
-          sessions_completed: 90,
-          price: "₹3000",
-          bio: "Certified financial planner with 15+ years of experience in wealth management.",
-          image: "/images/coach6.jpg"
-        }
-      ];
-      
-      setCoaches(mockCoaches);
-      setError("Using demo data - API connection issue. Please check backend server.");
+      setError("Failed to fetch coaches. Please try again.");
+      setCoaches([]);
     } finally {
       setLoading(false);
     }
@@ -194,6 +93,11 @@ const CoachesPage = () => {
   useEffect(() => {
     fetchCoaches();
   }, []);
+
+  // Refetch when filters change (optional - can be removed if you want manual search only)
+  // useEffect(() => {
+  //   fetchCoaches();
+  // }, [filters]);
 
   const handleSearch = () => {
     fetchCoaches();

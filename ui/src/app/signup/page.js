@@ -5,18 +5,21 @@ import Footer from "@/components/Footer/footer";
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createUser } from "@/services/user/user";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 
 export default function Signup() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
+    password: "",
+    confirmPassword: "",
     role: "",
   });
   const [loading, setLoading] = useState(false);
-  const [redirectPath, setRedirectPath] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -25,24 +28,46 @@ export default function Signup() {
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    const { name, email, role } = formData;
+    const { name, email, password, confirmPassword, role } = formData;
 
-    if (!name || !email || !role) {
+    if (!name || !email || !password || !role) {
       toastrError("Please fill all required fields!");
+      return;
+    }
+
+    if (password.length < 6) {
+      toastrError("Password must be at least 6 characters long!");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toastrError("Passwords do not match!");
       return;
     }
 
     setLoading(true);
     try {
-      const response = await createUser(formData);
+      const signupData = {
+        name,
+        email,
+        phone: formData.phone || null,
+        password,
+        role: role === 'coach' ? 'mentor' : 'user' // Map 'coach' to 'mentor'
+      };
 
-      if (response.message === "User created successfully") {
-        toastrSuccess("Account created successfully! Please login.");
+      const response = await createUser(signupData);
+
+      if (response.error) {
+        toastrError(response.error);
+      } else if (response.message) {
+        toastrSuccess(response.message || "Account created successfully! Please verify your email.");
+        // Redirect to OTP verify page with email and role
         setTimeout(() => {
-          window.location.href = "/login";
-        }, 1500);
+          const roleParam = formData.role === 'coach' ? 'coach' : 'user';
+          router.push(`/verify-otp?email=${encodeURIComponent(formData.email)}&role=${roleParam}`);
+        }, 1000);
       } else {
-        toastrError(response.message || "Signup failed");
+        toastrError("Signup failed");
       }
     } catch (err) {
       console.error("Signup error:", err);
@@ -57,10 +82,10 @@ export default function Signup() {
       <MainHeader />
 
       <main className="flex-grow flex items-center justify-center px-6 py-16 md:py-20 lg:py-24 bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="w-full max-w-7xl grid md:grid-cols-2 gap-12 md:gap-16 lg:gap-20 items-center">
+        <div className="w-full max-w-7xl grid md:grid-cols-2 gap-12 md:gap-16 lg:gap-20 items-start">
           
           {/* Left Side - Information */}
-          <div className="hidden md:flex flex-col justify-center space-y-10 fade-in">
+          <div className="hidden md:flex flex-col justify-start space-y-10 fade-in pt-8">
             <div className="text-center space-y-6">
               <div className="inline-block">
                 <Image 
@@ -139,7 +164,7 @@ export default function Signup() {
           </div>
 
           {/* Right Side - Signup Form */}
-          <div className="card glass-effect max-w-md w-full mx-auto spacing-extra-generous fade-in">
+          <div className="card glass-effect max-w-md w-full mx-auto spacing-extra-generous fade-in pt-8">
             <div className="text-center mb-10 md:mb-12">
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] mb-6">
                 <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -199,6 +224,40 @@ export default function Signup() {
                   onChange={handleChange}
                   className="input-professional"
                   placeholder="+1 (555) 000-0000"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-3">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="input-professional"
+                  placeholder="At least 6 characters"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-3">
+                  Confirm Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="input-professional"
+                  placeholder="Re-enter your password"
+                  required
+                  minLength={6}
                 />
               </div>
 

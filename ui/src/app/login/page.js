@@ -5,15 +5,14 @@ import MainHeader from "@/components/Header/mainHeader";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { loginFormElements } from "@/components/ui/constants/loginFormElement";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
-import Input from "@/components/ui/formelements/input";
+import { login, sendOTP, verifyOTP } from "@/services/auth/auth";
 import Image from "next/image";
 
 export default function Login() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({ email: "", otp: "" });
+  const [loginMethod, setLoginMethod] = useState('password'); // 'password' or 'otp'
+  const [formData, setFormData] = useState({ email: "", password: "", otp: "" });
   const [loading, setLoading] = useState(false);
 
   const handleFormData = (e) => {
@@ -21,78 +20,141 @@ export default function Login() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  async function handleSendOtp(e) {
+  // Password login
+  async function handlePasswordLogin(e) {
     e.preventDefault();
-    const validator = loginFormElements[0].validate(formData.email);
+    if (!formData.email || !formData.password) {
+      toastrError("Please enter email and password");
+      return;
+    }
 
-    if (validator === true) {
-      setLoading(true);
-      try {
-        const res = await fetch("http://localhost:8001/api/auth/send-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ email: formData.email }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          toastrSuccess("OTP sent to your email!");
-          setStep(2);
+    setLoading(true);
+    try {
+      const result = await login(formData.email, formData.password);
+      
+      if (result.error) {
+        // Check if user needs verification
+        if (result.requiresVerification) {
+          toastrError(result.error);
+          // Send OTP and redirect to verify-otp page
+          const userEmail = result.email || formData.email;
+          const roleParam = result.role === 'mentor' || result.role === 'user';
+          
+          // Send OTP automatically
+          sendOTP(userEmail).then((otpResult) => {
+            if (otpResult.error) {
+              toastrError("Failed to send OTP. Please try again.");
+            } else {
+              toastrSuccess("OTP sent to your email!");
+            }
+            // Redirect to verify-otp page
+            setTimeout(() => {
+              router.push(`/verify-otp?email=${encodeURIComponent(userEmail)}&role=${roleParam}`);
+            }, 1000);
+          }).catch((err) => {
+            console.error("Error sending OTP:", err);
+            // Still redirect even if OTP send fails
+            setTimeout(() => {
+              router.push(`/verify-otp?email=${encodeURIComponent(userEmail)}&role=${roleParam}`);
+            }, 1000);
+          });
         } else {
-          toastrError(data.error || "Something went wrong");
+          toastrError(result.error);
         }
-      } catch (err) {
-        toastrError("Network error");
-      } finally {
-        setLoading(false);
+      } else {
+        // Store user data
+        if (result.user) {
+          localStorage.setItem("userId", result.user.id);
+          localStorage.setItem("userRole", result.user.role);
+          localStorage.setItem("userEmail", result.user.email);
+          localStorage.setItem("userName", result.user.name);
+          if (result.token) {
+            localStorage.setItem("token", result.token);
+          }
+
+          toastrSuccess("Login successful!");
+          
+          // Redirect based on role
+          const role = result.user.role;
+          if (role === "mentor") {
+            router.push("/dashboard/coach");
+          } else {
+            router.push("/dashboard/user");
+          }
+        }
       }
-    } else {
-      toastrError(validator);
+    } catch (err) {
+      toastrError("Network error");
+    } finally {
+      setLoading(false);
     }
   }
 
+  // OTP login - send OTP
+  async function handleSendOtp(e) {
+    e.preventDefault();
+    if (!formData.email) {
+      toastrError("Please enter your email");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await sendOTP(formData.email);
+      
+      if (result.error) {
+        toastrError(result.error);
+      } else {
+        toastrSuccess("OTP sent to your email!");
+        setLoginMethod('otp-verify');
+      }
+    } catch (err) {
+      toastrError("Network error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // OTP login - verify OTP
   async function handleVerifyOtp(e) {
     e.preventDefault();
-    const validator = loginFormElements[0].validate(formData.email);
+    if (!/^\d{6}$/.test(formData.otp)) {
+      toastrError("OTP must be exactly 6 digits");
+      return;
+    }
 
-    if (validator === true) {
-      if (/^\d{6}$/.test(formData.otp)) {
-        setLoading(true);
-        try {
-          const res = await fetch("http://localhost:8001/api/auth/verify-otp", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ email: formData.email, otp: formData.otp }),
-          });
-
-          const data = await res.json();
-
-          if (res.ok) {
-            localStorage.setItem("userId", data.id);
-            localStorage.setItem("userRole", data.role);
-            localStorage.setItem("userEmail", data.email);
-
-            toastrSuccess("Login successful!");
-
-            if (data.role === "Doctor") {
-              router.push("/approve");
-            } else {
-              router.push(`/dashboard/${data.role}`);
-            }
-          } else {
-            toastrError(data.error || "Invalid OTP");
-          }
-        } catch (err) {
-          toastrError("Network error");
-        } finally {
-          setLoading(false);
-        }
+    setLoading(true);
+    try {
+      const result = await verifyOTP(formData.email, formData.otp);
+      
+      if (result.error) {
+        toastrError(result.error);
       } else {
-        toastrError("OTP must be exactly 6 digits");
+        // Store user data
+        if (result.user) {
+          localStorage.setItem("userId", result.user.id);
+          localStorage.setItem("userRole", result.user.role);
+          localStorage.setItem("userEmail", result.user.email);
+          localStorage.setItem("userName", result.user.name);
+          if (result.token) {
+            localStorage.setItem("token", result.token);
+          }
+
+          toastrSuccess("Login successful!");
+          
+          // Redirect based on role
+          const role = result.user.role;
+          if (role === "mentor") {
+            router.push("/dashboard/coach");
+          } else {
+            router.push("/dashboard/user");
+          }
+        }
       }
-    } else {
-      toastrError(validator);
+    } catch (err) {
+      toastrError("Network error");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -142,14 +204,97 @@ export default function Login() {
                 </svg>
               </div>
               <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
-                {step === 1 ? "Sign In" : "Verify OTP"}
+                {loginMethod === 'password' ? "Sign In" : loginMethod === 'otp' ? "Sign In with OTP" : "Verify OTP"}
               </h2>
               <p className="text-base lg:text-lg text-gray-600 leading-relaxed">
-                {step === 1 ? "Enter your email to receive a one-time password" : "Enter the 6-digit code sent to your email"}
+                {loginMethod === 'password' 
+                  ? "Enter your email and password to continue" 
+                  : loginMethod === 'otp'
+                  ? "Enter your email to receive a one-time password"
+                  : "Enter the 6-digit code sent to your email"}
               </p>
             </div>
 
-            {step === 1 && (
+            {/* Login Method Toggle */}
+            <div className="flex gap-2 mb-6 justify-center">
+              <button
+                type="button"
+                onClick={() => setLoginMethod('password')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  loginMethod === 'password'
+                    ? 'bg-[var(--primary)] text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Password
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginMethod('otp')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  loginMethod === 'otp' || loginMethod === 'otp-verify'
+                    ? 'bg-[var(--primary)] text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                OTP
+              </button>
+            </div>
+
+            {/* Password Login Form */}
+            {loginMethod === 'password' && (
+              <form onSubmit={handlePasswordLogin} className="space-y-8">
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-3">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleFormData}
+                    className="input-professional"
+                    placeholder="you@example.com"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-3">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleFormData}
+                    className="input-professional"
+                    placeholder="Enter your password"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn btn-primary w-full py-4 text-lg font-semibold mt-8"
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="spinner mr-2" style={{width: '20px', height: '20px', borderWidth: '2px'}}></div>
+                      Signing in...
+                    </div>
+                  ) : (
+                    "Sign In"
+                  )}
+                </button>
+              </form>
+            )}
+
+            {/* OTP Send Form */}
+            {loginMethod === 'otp' && (
               <form onSubmit={handleSendOtp} className="space-y-8">
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-3">
@@ -184,7 +329,8 @@ export default function Login() {
               </form>
             )}
 
-            {step === 2 && (
+            {/* OTP Verify Form */}
+            {loginMethod === 'otp-verify' && (
               <form onSubmit={handleVerifyOtp} className="space-y-8">
                 <div>
                   <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-3">
@@ -220,7 +366,7 @@ export default function Login() {
 
                 <button
                   type="button"
-                  onClick={() => setStep(1)}
+                  onClick={() => setLoginMethod('otp')}
                   className="w-full text-sm text-[var(--primary)] hover:underline font-medium pt-4"
                 >
                   ← Change Email

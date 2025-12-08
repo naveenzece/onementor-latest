@@ -1,27 +1,98 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import SkillInput from "@/components/coach/profile/SkillsInput";
-import FileUpload from "@/components/coach/profile/fileupload";
 import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 import { ArrowLeftIcon, UserCircleIcon, AcademicCapIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
+import { createMentorProfile, getMentorProfile } from "@/services/mentor/mentor";
 
 const ProfileForm = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  
+  // Mapping of short forms to full expertise text
+  const expertiseMapping = {
+    "fitness": "Fitness & Wellness",
+    "career": "Career Development",
+    "life": "Life Coaching",
+    "business": "Business & Entrepreneurship",
+    "tech": "Technology & Programming",
+    "finance": "Finance & Investment"
+  };
+
+  // Reverse mapping for loading existing profiles
+  const expertiseReverseMapping = {
+    "Fitness & Wellness": "fitness",
+    "Career Development": "career",
+    "Life Coaching": "life",
+    "Business & Entrepreneurship": "business",
+    "Technology & Programming": "tech",
+    "Finance & Investment": "finance"
+  };
+
   const [formData, setFormData] = useState({
     name: "",
     expertise: "",
+    customExpertise: "",
     bio: "",
     skills: [],
     slots: [],
-    resume: null,
   });
 
+  useEffect(() => {
+    // Fetch existing profile if any
+    const userId = localStorage.getItem("userId");
+    if (userId) {
+      fetchProfile(userId);
+    }
+  }, []);
+
+  const fetchProfile = async (userId) => {
+    try {
+      const response = await getMentorProfile(userId);
+      
+      if (response.error) {
+        // Profile doesn't exist yet, which is fine
+        return;
+      }
+      
+      const data = response;
+      const category = data.category || "";
+      // Check if category is one of the predefined full text options or short forms
+      const predefinedShortForms = ["fitness", "career", "life", "business", "tech", "finance"];
+      const predefinedFullTexts = Object.keys(expertiseReverseMapping);
+      const isShortForm = predefinedShortForms.includes(category);
+      const isFullText = predefinedFullTexts.includes(category);
+      const isCustom = category && !isShortForm && !isFullText;
+      
+      // Convert full text to short form if needed, or use short form directly
+      const shortForm = isFullText ? expertiseReverseMapping[category] : (isShortForm ? category : null);
+      
+      setFormData({
+        name: data.username || "",
+        expertise: isCustom ? "other" : (shortForm || ""),
+        customExpertise: isCustom ? (category || "") : "",
+        bio: data.bio || "",
+        skills: data.skills ? (typeof data.skills === 'string' ? JSON.parse(data.skills) : data.skills) : [],
+        slots: [],
+      });
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    }
+  };
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === "expertise" && value !== "other") {
+      // Clear custom expertise when switching away from "other"
+      setFormData({ ...formData, [name]: value, customExpertise: "" });
+    } else {
+      // Ensure customExpertise is always a string
+      const updatedValue = name === "customExpertise" ? (value || "") : value;
+      setFormData({ ...formData, [name]: updatedValue });
+    }
   };
 
   const handleSkillsChange = (skills) => {
@@ -32,32 +103,46 @@ const ProfileForm = () => {
     setFormData({ ...formData, slots });
   };
 
-  const handleResumeUpload = (file) => {
-    setFormData({ ...formData, resume: file });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const userId = localStorage.getItem("userId");
+    if (!userId) {
+      toastrError("User not found. Please login again.");
+      router.push("/login");
+      return;
+    }
+
+    // Validate custom expertise if "other" is selected
+    if (formData.expertise === "other") {
+      if (!formData.customExpertise || formData.customExpertise.trim() === "") {
+        toastrError("Please enter your expertise");
+        return;
+      }
+    }
+
     const formDataObj = new FormData();
-    formDataObj.append("name", formData.name);
-    formDataObj.append("expertise", formData.expertise);
+    formDataObj.append("user_id", userId);
+    formDataObj.append("username", formData.name);
+    // Use custom expertise if "other" is selected, otherwise convert short form to full text
+    const categoryValue = formData.expertise === "other" 
+      ? formData.customExpertise.trim() 
+      : (expertiseMapping[formData.expertise] || formData.expertise);
+    formDataObj.append("category", categoryValue);
     formDataObj.append("bio", formData.bio);
     formDataObj.append("skills", JSON.stringify(formData.skills));
-    formDataObj.append("slots", JSON.stringify(formData.slots));
-    if (formData.resume) {
-      formDataObj.append("resume", formData.resume);
-    }
+    // Note: other_skills can be added if needed in the future
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8001/api/coachprofile", {
-        method: "POST",
-        body: formDataObj,
-      });
+      const response = await createMentorProfile(formDataObj);
+      
+      if (response.error) {
+        toastrError(response.error || "Failed to save profile");
+        return;
+      }
 
-      const data = await res.json();
-      console.log("Server Response:", data);
+      console.log("Server Response:", response);
       toastrSuccess("Profile saved successfully!");
       
       setTimeout(() => {
@@ -65,7 +150,7 @@ const ProfileForm = () => {
       }, 1500);
     } catch (error) {
       console.error("Error:", error);
-      toastrError("Failed to save profile. Please try again.");
+      toastrError(error.message || "Failed to save profile. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -164,7 +249,27 @@ const ProfileForm = () => {
                   <option value="business">Business & Entrepreneurship</option>
                   <option value="tech">Technology & Programming</option>
                   <option value="finance">Finance & Investment</option>
+                  <option value="other">Other</option>
                 </select>
+                {formData.expertise === "other" && (
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Specify Your Expertise <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="customExpertise"
+                      value={formData.customExpertise || ""}
+                      onChange={handleChange}
+                      required={formData.expertise === "other"}
+                      className="input-professional"
+                      placeholder="e.g., Music, Art, Language, etc."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter your specific area of expertise
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -209,21 +314,6 @@ const ProfileForm = () => {
             </div>
           </div>
 
-          {/* Resume Upload */}
-          <div className="card p-6">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center mr-3">
-                <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Resume/CV</h2>
-                <p className="text-sm text-gray-600">Upload your professional credentials</p>
-              </div>
-            </div>
-            <FileUpload onFileSelect={handleResumeUpload} />
-          </div>
 
           {/* Action Buttons */}
           <div className="flex justify-between items-center">

@@ -1,5 +1,7 @@
 "use client";
+import { useState, useEffect } from "react";
 import Card from "@/components/card/card";
+import SetupProgress from "@/components/coach/SetupProgress";
 import { 
   UserIcon, 
   ClipboardDocumentListIcon, 
@@ -13,16 +15,106 @@ import {
 import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { useRouter } from "next/navigation";
+import { getMentorProfile } from "@/services/mentor/mentor";
 
 export default function CoachDashboard() {
   const router = useRouter();
+  const [coachName, setCoachName] = useState('Coach');
+  const [loading, setLoading] = useState(true);
+  
+  // Setup progress state
+  const [setupProgress, setSetupProgress] = useState({
+    profileComplete: false,
+    accountComplete: false,
+    slotComplete: false
+  });
+
+  useEffect(() => {
+    // Get coach name from localStorage on client side only
+    const name = localStorage.getItem('userName') || 'Coach';
+    setCoachName(name);
+    
+    // Fetch setup progress
+    fetchSetupProgress();
+  }, []);
+
+  const fetchSetupProgress = async () => {
+    try {
+      const userId = localStorage.getItem("userId");
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
+      // Fetch mentor profile
+      const response = await getMentorProfile(userId);
+
+      if (response.error) {
+        // Profile doesn't exist yet, all are incomplete
+        setSetupProgress({
+          profileComplete: false,
+          accountComplete: false,
+          slotComplete: false
+        });
+        setLoading(false);
+        return;
+      }
+
+      const profile = response;
+      
+      // Check profile completion: needs username, category, bio, and skills
+      let skillsValid = false;
+      if (profile.skills) {
+        try {
+          // Handle skills as JSON string or array
+          const skillsArray = typeof profile.skills === 'string' 
+            ? JSON.parse(profile.skills) 
+            : profile.skills;
+          skillsValid = Array.isArray(skillsArray) && skillsArray.length > 0;
+        } catch (e) {
+          skillsValid = false;
+        }
+      }
+      
+      const profileComplete = !!(
+        profile.username && 
+        profile.username.trim() !== '' &&
+        profile.category && 
+        profile.category.trim() !== '' &&
+        profile.bio && 
+        profile.bio.trim() !== '' &&
+        skillsValid
+      );
+      
+      // Check slot setup completion: needs hourly_rate
+      const slotComplete = !!(profile.hourly_rate && parseFloat(profile.hourly_rate) > 0);
+      
+      // Account setup - for now set to false (will be implemented later)
+      const accountComplete = false;
+      
+      setSetupProgress({
+        profileComplete,
+        accountComplete,
+        slotComplete
+      });
+    } catch (error) {
+      console.error("Error fetching setup progress:", error);
+      setSetupProgress({
+        profileComplete: false,
+        accountComplete: false,
+        slotComplete: false
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.clear();
     router.push("/login");
   };
 
-  const coachName = typeof window !== 'undefined' ? localStorage.getItem('userEmail')?.split('@')[0] || 'Coach' : 'Coach';
+  const allSetupComplete = setupProgress.profileComplete && setupProgress.accountComplete && setupProgress.slotComplete;
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -40,12 +132,6 @@ export default function CoachDashboard() {
                 Welcome back, {coachName}! Manage your coaching sessions and grow your impact.
               </p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="btn btn-secondary px-8 py-3 self-start md:self-auto"
-            >
-              Logout
-            </button>
           </div>
         </div>
 
@@ -92,6 +178,15 @@ export default function CoachDashboard() {
           </div>
         </div>
 
+        {/* Setup Progress Section */}
+        {!loading && (
+          <SetupProgress 
+            profileComplete={setupProgress.profileComplete}
+            accountComplete={setupProgress.accountComplete}
+            slotComplete={setupProgress.slotComplete}
+          />
+        )}
+
         {/* Main Features Section */}
         <div className="mb-12 md:mb-16 lg:mb-20">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8 md:mb-10">Quick Actions</h2>
@@ -106,26 +201,29 @@ export default function CoachDashboard() {
               title="Manage Schedule" 
               description="Set your availability and time slots"
               icon={<ClipboardDocumentListIcon className="w-8 h-8" />} 
+              //link={allSetupComplete ? "/dashboard/coachdashboard/manageschedule" : undefined}
+              //disabled={!allSetupComplete}
               link="/dashboard/coachdashboard/manageschedule" 
+              disabledMessage="Complete setup tasks to unlock"
             />
-            <Card 
+            {/* <Card 
               title="View Requests" 
               description="Check pending session requests"
               icon={<CalendarIcon className="w-8 h-8" />} 
               link="/dashboard/coachdashboard/request" 
-            />
+            /> */}
             <Card 
               title="Manage Bookings" 
               description="Accept or decline session requests"
               icon={<BellIcon className="w-8 h-8" />} 
               link="/dashboard/coachdashboard/acceptdecline" 
             />
-            <Card 
+            {/* <Card 
               title="Live Sessions" 
               description="Join and conduct coaching sessions"
               icon={<VideoCameraIcon className="w-8 h-8" />} 
               link="/dashboard/coachdashboard/livesession" 
-            />
+            /> */}
             <Card 
               title="Track Earnings" 
               description="Monitor your income and performance"

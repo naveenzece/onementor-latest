@@ -11,12 +11,12 @@ const FilterBar = ({ filters, setFilters, handleSearch }) => {
           className="input-professional"
         >
           <option value="">All Expertise</option>
+          <option value="Fitness & Wellness">Fitness & Wellness</option>
           <option value="Career Development">Career Development</option>
-          <option value="Technology Leadership">Technology Leadership</option>
-          <option value="Personal Development">Personal Development</option>
-          <option value="Business Strategy">Business Strategy</option>
-          <option value="Communication Skills">Communication Skills</option>
-          <option value="Financial Planning">Financial Planning</option>
+          <option value="Life Coaching">Life Coaching</option>
+          <option value="Business & Entrepreneurship">Business & Entrepreneurship</option>
+          <option value="Technology & Programming">Technology & Programming</option>
+          <option value="Finance & Investment">Finance & Investment</option>
         </select>
       </div>
       
