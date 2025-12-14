@@ -22,7 +22,7 @@ const getMentors = async (req, res) => {
         mp.hourly_rate,
         COUNT(DISTINCT ms.id) as available_slots_count
       FROM users u
-      LEFT JOIN mentor_profiles mp ON u.id = mp.user_id
+      inner JOIN mentor_profiles mp ON u.id = mp.user_id
       LEFT JOIN mentor_slots ms ON u.id = ms.mentor_id 
         AND ms.is_booked = 0 
         AND (ms.is_active = 1 OR ms.is_active IS NULL)
