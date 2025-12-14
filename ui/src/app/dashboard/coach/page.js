@@ -212,12 +212,12 @@ export default function CoachDashboard() {
               icon={<CalendarIcon className="w-8 h-8" />} 
               link="/dashboard/coachdashboard/request" 
             /> */}
-            <Card 
+            {/* <Card 
               title="Manage Bookings" 
               description="Accept or decline session requests"
               icon={<BellIcon className="w-8 h-8" />} 
               link="/dashboard/coachdashboard/acceptdecline" 
-            />
+            /> */}
             {/* <Card 
               title="Live Sessions" 
               description="Join and conduct coaching sessions"

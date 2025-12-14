@@ -7,10 +7,12 @@ import { Menu, MenuButton, MenuItem, MenuItems, Transition } from "@headlessui/r
 import { Fragment } from "react";
 import { User, LogOut, Mail, ChevronDown } from "lucide-react";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
+import Loader from "@/components/ui/loader/loader";
 
 export default function Header() {
     const [userEmail, setUserEmail] = useState("");
     const [userName, setUserName] = useState("");
+    const [loading, setLoading] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -22,6 +24,7 @@ export default function Header() {
     }, []);
 
     const handleLogout = async () => {
+        setLoading(true);
         try {
             const res = await fetch("http://localhost:8001/api/auth/logout", {
                 method: "POST",
@@ -37,25 +40,32 @@ export default function Header() {
                 localStorage.removeItem("token");
 
                 toastrSuccess("Logged out successfully!");
+                // Redirect to login - keep loader visible during redirect
                 setTimeout(() => {
                     router.push("/login");
                 }, 1000);
+                // Don't set loading to false - keep it visible during redirect
             } else {
                 toastrError("Logout failed. Please try again.");
+                setLoading(false);
             }
         } catch (err) {
             console.error("Logout error:", err);
             // Clear localStorage even on error
             localStorage.clear();
             toastrError("Network error. Redirecting to login...");
+            // Redirect to login - keep loader visible during redirect
             setTimeout(() => {
                 router.push("/login");
             }, 1000);
+            // Don't set loading to false - keep it visible during redirect
         }
     };
 
     return (
-        <header className="bg-gradient-to-r from-[#0A3551] via-[#0f4a70] to-[#0A3551] sticky top-0 shadow-xl w-full z-50 border-b border-[#1a5a7a]">
+        <>
+            <Loader isLoading={loading} message="Logging out..." />
+            <header className="bg-gradient-to-r from-[#0A3551] via-[#0f4a70] to-[#0A3551] sticky top-0 shadow-xl w-full z-50 border-b border-[#1a5a7a]">
             <div className="container-professional px-2">
                 <div className="flex flex-row justify-between items-center py-1">
                     
@@ -151,5 +161,6 @@ export default function Header() {
                 </div>
             </div>
         </header>
+        </>
     );
 }

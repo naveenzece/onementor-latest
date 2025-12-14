@@ -19,6 +19,7 @@ const BookSessionPage = () => {
   const [loading, setLoading] = useState(false);
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [datesWithSlots, setDatesWithSlots] = useState([]);
   const router = useRouter();
   const searchParams = useSearchParams();
   const coachId = searchParams.get('coachId');
@@ -80,6 +81,74 @@ const BookSessionPage = () => {
 
     fetchCoachData();
   }, [coachId, router]);
+
+  // Fetch all available slots to highlight dates in calendar
+  useEffect(() => {
+    const fetchAllAvailableSlots = async () => {
+      if (!coachId) return;
+
+      try {
+        const allSlotsResponse = await getSlotsByMentor(coachId, {
+          is_booked: 0,
+          is_active: 1
+        });
+
+        if (allSlotsResponse.error) {
+          console.error("Error fetching all slots:", allSlotsResponse.error);
+          return;
+        }
+
+        const allSlots = Array.isArray(allSlotsResponse) ? allSlotsResponse : [];
+        
+        console.log("All slots from API:", JSON.stringify(allSlots, null, 2));
+        
+        // Extract unique dates from slots
+        // API now returns dates in YYYY-MM-DD format
+        const uniqueDates = new Set();
+        allSlots.forEach(slot => {
+          if (slot.date) {
+            // API should return date as YYYY-MM-DD string
+            let dateStr = '';
+            
+            if (typeof slot.date === 'string') {
+              // Extract YYYY-MM-DD from string (handle ISO format if any)
+              dateStr = slot.date.split('T')[0].split(' ')[0];
+            } else if (slot.date instanceof Date) {
+              // Fallback: format Date object (shouldn't happen with API fix)
+              const year = slot.date.getFullYear();
+              const month = String(slot.date.getMonth() + 1).padStart(2, '0');
+              const day = String(slot.date.getDate()).padStart(2, '0');
+              dateStr = `${year}-${month}-${day}`;
+            }
+            
+            // Validate and add date
+            if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+              uniqueDates.add(dateStr);
+              console.log("Added date:", dateStr, "from slot id:", slot.id);
+            } else {
+              console.warn("Invalid date format:", slot.date, "from slot:", slot);
+            }
+          }
+        });
+
+        console.log("Unique dates with slots:", Array.from(uniqueDates).sort());
+
+        // Convert to Date objects for react-datepicker (using local timezone)
+        const datesArray = Array.from(uniqueDates).map(dateStr => {
+          const [year, month, day] = dateStr.split('-').map(Number);
+          // Create date at noon local time to avoid timezone edge cases
+          return new Date(year, month - 1, day, 12, 0, 0);
+        });
+
+        console.log("Dates array for datepicker:", datesArray);
+        setDatesWithSlots(datesArray);
+      } catch (error) {
+        console.error("Error fetching all available slots:", error);
+      }
+    };
+
+    fetchAllAvailableSlots();
+  }, [coachId]);
 
   // Fetch available slots when date is selected
   useEffect(() => {
@@ -371,6 +440,27 @@ const BookSessionPage = () => {
                   dateFormat="MMMM dd, yyyy"
                   className="input-professional w-full"
                   placeholderText="Select a date"
+                  highlightDates={datesWithSlots}
+                  renderDayContents={(dayOfMonth, date) => {
+                    if (!date) return dayOfMonth;
+                    // Format date as YYYY-MM-DD for comparison
+                    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                    
+                    // Compare with dates from API (stored as YYYY-MM-DD strings)
+                    const hasSlot = datesWithSlots.some(d => {
+                      const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                      return dStr === dateStr;
+                    });
+                    
+                    return (
+                      <div className="relative">
+                        {dayOfMonth}
+                        {hasSlot && (
+                          <span className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-[var(--primary)] rounded-full"></span>
+                        )}
+                      </div>
+                    );
+                  }}
                 />
               </div>
 

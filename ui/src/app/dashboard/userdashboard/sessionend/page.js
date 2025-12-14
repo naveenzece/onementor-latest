@@ -2,12 +2,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toastrSuccess, toastrError } from '../../../../components/ui/toaster/toaster';
+import Loader from '../../../../components/ui/loader/loader';
 
 export default function LogoutButton() {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
+    setLoading(true);
+    setShowModal(false);
     try {
       const res = await fetch('http://localhost:8001/api/auth/logout', {
         method: 'POST',
@@ -21,11 +25,13 @@ export default function LogoutButton() {
         data = JSON.parse(text);
       } catch (err) {
         console.error('Failed to parse JSON. Response:', text);
+        setLoading(false);
         return toastrError('Server returned invalid response');
       }
 
       if (!res.ok) {
         console.error('Logout error:', data);
+        setLoading(false);
         return toastrError(data.error || 'Logout failed');
       }
 
@@ -33,15 +39,21 @@ export default function LogoutButton() {
       localStorage.removeItem('userRole');
       localStorage.removeItem('userEmail');
 
+      // Redirect to login - keep loader visible during redirect
       router.push('/login');
+      // Don't set loading to false - keep it visible during redirect
     } catch (err) {
       console.error('Network or fetch error:', err);
-      toastrError('Network error');
+      // Redirect to login even on error - keep loader visible during redirect
+      localStorage.clear();
+      router.push('/login');
+      // Don't set loading to false - keep it visible during redirect
     }
   };
 
   return (
     <>
+      <Loader isLoading={loading} message="Logging out..." />
       <div className="flex flex-col items-center space-y-4">
         <button
           onClick={() => setShowModal(true)}

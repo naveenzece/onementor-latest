@@ -1,13 +1,16 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toastrSuccess, toastrInfo } from "@/components/ui/toaster/toaster";
+import Loader from "@/components/ui/loader/loader";
 
 const ActionButtons = () => {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
+    setLoading(true);
     try {
       const res = await fetch("http://localhost:8001/api/auth/logout", {
         method: "POST",
@@ -17,14 +20,20 @@ const ActionButtons = () => {
       if (res.ok) {
         localStorage.clear();
         toastrSuccess("Logged out successfully!");
+        // Redirect to login - keep loader visible during redirect
         setTimeout(() => {
           router.push("/login");
         }, 1000);
+        // Don't set loading to false - keep it visible during redirect
+      } else {
+        setLoading(false);
       }
     } catch (err) {
       console.error("Logout error:", err);
       localStorage.clear();
+      // Redirect to login - keep loader visible during redirect
       router.push("/login");
+      // Don't set loading to false - keep it visible during redirect
     }
   };
 
@@ -34,7 +43,9 @@ const ActionButtons = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row justify-center gap-4">
+    <>
+      <Loader isLoading={loading} message="Logging out..." />
+      <div className="flex flex-col md:flex-row justify-center gap-4">
       <button
         onClick={handleBookAgain}
         className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-colors"
@@ -49,6 +60,7 @@ const ActionButtons = () => {
         Logout
       </button>
     </div>
+    </>
   );
 };
 

@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createUser } from "@/services/user/user";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
+import Loader from "@/components/ui/loader/loader";
 
 export default function Signup() {
   const router = useRouter();
@@ -59,27 +60,31 @@ export default function Signup() {
 
       if (response.error) {
         toastrError(response.error);
+        setLoading(false);
       } else if (response.message) {
         toastrSuccess(response.message || "Account created successfully! Please verify your email.");
-        // Redirect to OTP verify page with email and role
+        // Redirect to OTP verify page with email and role - keep loader visible during redirect
         setTimeout(() => {
           const roleParam = formData.role === 'coach' ? 'coach' : 'user';
           router.push(`/verify-otp?email=${encodeURIComponent(formData.email)}&role=${roleParam}`);
         }, 1000);
+        // Don't set loading to false - keep it visible during redirect
       } else {
         toastrError("Signup failed");
+        setLoading(false);
       }
     } catch (err) {
       console.error("Signup error:", err);
       toastrError("Something went wrong. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen relative">
       <MainHeader />
+
+      <Loader isLoading={loading} message="Creating Account..." />
 
       <main className="flex-grow flex items-center justify-center px-6 py-16 md:py-20 lg:py-24 bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="w-full max-w-7xl grid md:grid-cols-2 gap-12 md:gap-16 lg:gap-20 items-start">

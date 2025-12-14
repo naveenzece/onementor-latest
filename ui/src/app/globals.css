@@ -464,3 +464,30 @@ p {
     margin-top: 3rem;
   }
 }
+
+/* DatePicker Styles - Highlight dates with slots */
+.react-datepicker__day.has-slot {
+  position: relative;
+}
+
+.react-datepicker__day.has-slot::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background-color: var(--primary);
+  border-radius: 50%;
+}
+
+.react-datepicker__day--highlighted {
+  background-color: rgba(10, 53, 81, 0.1) !important;
+  color: var(--primary) !important;
+  font-weight: 600;
+}
+
+.react-datepicker__day--highlighted:hover {
+  background-color: rgba(10, 53, 81, 0.2) !important;
+}

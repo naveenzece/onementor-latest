@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { verifyOTP, sendOTP } from "@/services/auth/auth";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
+import Loader from "@/components/ui/loader/loader";
 
 export default function VerifyOtp() {
   const router = useRouter();
@@ -53,6 +54,7 @@ export default function VerifyOtp() {
 
       if (result.error) {
         toastrError(result.error);
+        setLoading(false);
       } else {
         // Store user data
         if (result.user) {
@@ -66,19 +68,21 @@ export default function VerifyOtp() {
 
           toastrSuccess("Email verified successfully!");
 
-          // Redirect based on role
+          // Redirect based on role - keep loader visible during redirect
           const userRole = result.user.role;
           if (userRole === "mentor" || userRole === "coach") {
             router.push("/dashboard/coach");
           } else {
             router.push("/dashboard/user");
           }
+          // Don't set loading to false - keep it visible during redirect
+        } else {
+          setLoading(false);
         }
       }
     } catch (err) {
       console.error("Verify OTP error:", err);
       toastrError("Network error. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
@@ -106,8 +110,10 @@ export default function VerifyOtp() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen relative">
       <MainHeader />
+
+      <Loader isLoading={loading} message="Verifying OTP..." />
 
       <main className="flex-grow flex items-center justify-center px-6 py-16 md:py-20 lg:py-24 bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="w-full max-w-7xl grid md:grid-cols-2 gap-12 md:gap-16 lg:gap-20 items-start">

@@ -114,12 +114,12 @@ export default function UserDashboard() {
               icon={<CalendarIcon className="w-8 h-8" />} 
               link="/dashboard/userdashboard/booksession" 
             />
-            <Card 
+            {/* <Card 
               title="AI Mentor Chat" 
               description="Get instant answers from AI assistant"
               icon={<ChatBubbleLeftRightIcon className="w-8 h-8" />} 
               link="/dashboard/userdashboard/userAi" 
-            />
+            /> */}
             <Card 
               title="Session Feedback" 
               description="Review and rate your completed sessions"

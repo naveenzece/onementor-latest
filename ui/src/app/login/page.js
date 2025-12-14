@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 import { login, sendOTP, verifyOTP } from "@/services/auth/auth";
 import Image from "next/image";
+import Loader from "@/components/ui/loader/loader";
 
 export default function Login() {
   const router = useRouter();
@@ -47,19 +48,21 @@ export default function Login() {
             } else {
               toastrSuccess("OTP sent to your email!");
             }
-            // Redirect to verify-otp page
+            // Redirect to verify-otp page - keep loader visible during redirect
             setTimeout(() => {
               router.push(`/verify-otp?email=${encodeURIComponent(userEmail)}&role=${roleParam}`);
             }, 1000);
           }).catch((err) => {
             console.error("Error sending OTP:", err);
-            // Still redirect even if OTP send fails
+            // Still redirect even if OTP send fails - keep loader visible during redirect
             setTimeout(() => {
               router.push(`/verify-otp?email=${encodeURIComponent(userEmail)}&role=${roleParam}`);
             }, 1000);
           });
+          // Don't set loading to false - keep it visible during redirect
         } else {
           toastrError(result.error);
+          setLoading(false);
         }
       } else {
         // Store user data
@@ -74,18 +77,20 @@ export default function Login() {
 
           toastrSuccess("Login successful!");
           
-          // Redirect based on role
+          // Redirect based on role - keep loader visible during redirect
           const role = result.user.role;
           if (role === "mentor") {
             router.push("/dashboard/coach");
           } else {
             router.push("/dashboard/user");
           }
+          // Don't set loading to false - keep it visible during redirect
+        } else {
+          setLoading(false);
         }
       }
     } catch (err) {
       toastrError("Network error");
-    } finally {
       setLoading(false);
     }
   }
@@ -104,13 +109,14 @@ export default function Login() {
       
       if (result.error) {
         toastrError(result.error);
+        setLoading(false);
       } else {
         toastrSuccess("OTP sent to your email!");
         setLoginMethod('otp-verify');
+        setLoading(false);
       }
     } catch (err) {
       toastrError("Network error");
-    } finally {
       setLoading(false);
     }
   }
@@ -129,6 +135,7 @@ export default function Login() {
       
       if (result.error) {
         toastrError(result.error);
+        setLoading(false);
       } else {
         // Store user data
         if (result.user) {
@@ -142,25 +149,32 @@ export default function Login() {
 
           toastrSuccess("Login successful!");
           
-          // Redirect based on role
+          // Redirect based on role - keep loader visible during redirect
           const role = result.user.role;
           if (role === "mentor") {
             router.push("/dashboard/coach");
           } else {
             router.push("/dashboard/user");
           }
+          // Don't set loading to false - keep it visible during redirect
+        } else {
+          setLoading(false);
         }
       }
     } catch (err) {
       toastrError("Network error");
-    } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen relative">
       <MainHeader />
+
+      <Loader 
+        isLoading={loading} 
+        message={loginMethod === 'password' ? "Signing in..." : loginMethod === 'otp' ? "Sending OTP..." : "Verifying OTP..."}
+      />
 
       <main className="flex-grow flex items-center justify-center px-6 py-16 md:py-20 lg:py-24 bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="w-full max-w-7xl grid md:grid-cols-2 gap-12 md:gap-16 lg:gap-20 items-center">

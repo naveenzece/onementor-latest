@@ -53,7 +53,39 @@ exports.getSlotsByMentor = async (req, res) => {
       console.log(`Total slots for mentor ${mentorId}:`, allSlots[0]?.total || 0);
     }
     
-    res.json(results);
+    // Format dates to ensure YYYY-MM-DD format (avoid timezone issues)
+    const formattedResults = results.map(slot => {
+      let formattedDate = slot.date;
+      
+      // If date is a Date object, format it as YYYY-MM-DD
+      if (slot.date instanceof Date) {
+        const year = slot.date.getFullYear();
+        const month = String(slot.date.getMonth() + 1).padStart(2, '0');
+        const day = String(slot.date.getDate()).padStart(2, '0');
+        formattedDate = `${year}-${month}-${day}`;
+      }
+      // If date is a string in ISO format, extract YYYY-MM-DD part
+      else if (typeof slot.date === 'string' && slot.date.includes('T')) {
+        formattedDate = slot.date.split('T')[0];
+      }
+      // If date is already in YYYY-MM-DD format, use it as is
+      else if (typeof slot.date === 'string' && slot.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        formattedDate = slot.date;
+      }
+      // If date has space separator, take first part
+      else if (typeof slot.date === 'string') {
+        formattedDate = slot.date.split(' ')[0];
+      }
+      
+      return {
+        ...slot,
+        date: formattedDate
+      };
+    });
+    
+    console.log("Formatted results:", JSON.stringify(formattedResults, null, 2));
+    
+    res.json(formattedResults);
   } catch (err) {
     console.error("DB Error:", err);
     res.status(500).json({ error: "Database error", details: err.message });
