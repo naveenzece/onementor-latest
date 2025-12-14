@@ -10,7 +10,8 @@ const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${process.env.AP
 // Required scopes for Google Calendar
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar',
-  'https://www.googleapis.com/auth/calendar.events'
+  'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/userinfo.email'
 ];
 
 /**
@@ -32,23 +33,23 @@ function createOAuth2Client() {
  */
 function getAuthUrl(userId, role = 'mentor') {
   // Use appropriate redirect URI based on role
-  const redirectUri = role === 'mentor' 
+  const redirectUri = role === 'mentor'
     ? (process.env.GOOGLE_REDIRECT_URI || `${process.env.API_BASE_URL || 'http://localhost:8001'}/api/mentor/calendar/callback`)
     : `${process.env.API_BASE_URL || 'http://localhost:8001'}/api/user/calendar/callback`;
-  
+
   const oauth2Client = new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
     redirectUri
   );
-  
+
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
     prompt: 'consent', // Force consent screen to get refresh token
     state: userId.toString() // Pass user ID in state
   });
-  
+
   return authUrl;
 }
 
@@ -61,13 +62,13 @@ function getAuthUrl(userId, role = 'mentor') {
 async function getTokensFromCode(code, redirectUri = null) {
   // Use the provided redirect URI or fall back to default
   const finalRedirectUri = redirectUri || GOOGLE_REDIRECT_URI;
-  
+
   const oauth2Client = new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
     finalRedirectUri
   );
-  
+
   try {
     const { tokens } = await oauth2Client.getToken(code);
     return tokens;
@@ -91,7 +92,7 @@ function getAuthenticatedClient(refreshToken) {
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     throw new Error('Google OAuth credentials not configured');
   }
-  
+
   const oauth2Client = createOAuth2Client();
   oauth2Client.setCredentials({
     refresh_token: refreshToken
@@ -182,13 +183,13 @@ async function getCalendarTokens(userId, role = 'mentor') {
 async function createCalendarEvent(userId, eventData, role = 'mentor') {
   try {
     const tokens = await getCalendarTokens(userId, role);
-    
+
     if (!tokens || !tokens.refreshToken) {
       throw new Error('Calendar not connected');
     }
 
     const oauth2Client = getAuthenticatedClient(tokens.refreshToken);
-    
+
     // Get a fresh access token
     const { credentials } = await oauth2Client.refreshAccessToken();
     oauth2Client.setCredentials(credentials);
