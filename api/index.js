@@ -98,6 +98,14 @@ app.use("/api/mentor/slots", slotManagementRoutes);
 const requestRoutes = require("./routes/coach/request");
 app.use("/api/mentor/requests", requestRoutes);
 
+// Mentor calendar integration
+const mentorCalendarRoutes = require("./routes/coach/calendar");
+app.use("/api/mentor/calendar", mentorCalendarRoutes);
+
+// User calendar integration
+const userCalendarRoutes = require("./routes/user/calendar");
+app.use("/api/user/calendar", userCalendarRoutes);
+
 // Payment routes
 app.use("/api/payment", paymentRoutes);
 
