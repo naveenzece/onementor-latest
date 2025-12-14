@@ -86,107 +86,88 @@ export default function Signup() {
 
       <Loader isLoading={loading} message="Creating Account..." />
 
-      <main className="flex-grow flex items-center justify-center px-6 py-16 md:py-20 lg:py-24 bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="w-full max-w-7xl grid md:grid-cols-2 gap-12 md:gap-16 lg:gap-20 items-start">
-          
+      <main className="flex-grow flex items-center justify-center px-4 py-12 md:py-16 bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="w-full max-w-6xl grid md:grid-cols-2 gap-8 md:gap-12 items-start">
+
           {/* Left Side - Information */}
-          <div className="hidden md:flex flex-col justify-start space-y-10 fade-in pt-8">
-            <div className="text-center space-y-6">
+          <div className="hidden md:flex flex-col justify-start space-y-8 fade-in pt-4">
+            <div className="text-center space-y-4">
               <div className="inline-block">
-                <Image 
+                <Image
                   src="/images/onementor.jpg"
                   alt="OneMentor"
-                  width={120}
-                  height={120}
+                  width={100}
+                  height={100}
                   className="rounded-full border-4 border-[var(--primary)] shadow-xl mx-auto"
                 />
               </div>
-              <h1 className="text-5xl lg:text-6xl font-bold gradient-text leading-tight">
+              <h1 className="text-4xl lg:text-5xl font-bold gradient-text leading-tight">
                 OneMentor
               </h1>
-              <p className="text-xl lg:text-2xl text-gray-600">
+              <p className="text-lg lg:text-xl text-gray-600">
                 Continuous Growth Platform
               </p>
             </div>
 
-            <div className="space-y-6">
-              <h2 className="text-2xl lg:text-3xl font-semibold text-gray-800">
+            <div className="space-y-4 text-center">
+              <h2 className="text-xl lg:text-2xl font-semibold text-gray-800">
                 Join Us Today!
               </h2>
-              <p className="text-lg text-gray-600">
+              <p className="text-base text-gray-600">
                 Start your journey towards continuous growth and success
               </p>
             </div>
-{/* 
-            <div className="grid grid-cols-2 gap-6">
-              <div className="card card-compact text-center">
-                <div className="text-3xl lg:text-4xl font-bold text-[var(--primary)] mb-2">500+</div>
-                <div className="text-sm text-gray-600">Expert Coaches</div>
-              </div>
-              <div className="card card-compact text-center">
-                <div className="text-3xl lg:text-4xl font-bold text-[var(--primary)] mb-2">10K+</div>
-                <div className="text-sm text-gray-600">Active Users</div>
-              </div>
-              <div className="card card-compact text-center">
-                <div className="text-3xl lg:text-4xl font-bold text-[var(--primary)] mb-2">50K+</div>
-                <div className="text-sm text-gray-600">Sessions Completed</div>
-              </div>
-              <div className="card card-compact text-center">
-                <div className="text-3xl lg:text-4xl font-bold text-[var(--primary)] mb-2">4.9★</div>
-                <div className="text-sm text-gray-600">Average Rating</div>
-              </div>
-            </div> */}
 
-            <div className="space-y-5">
-              <h3 className="font-semibold text-gray-800 text-xl">Why choose OneMentor?</h3>
-              <ul className="space-y-4">
+            <div className="space-y-4 pt-4 max-w-sm mx-auto w-full">
+              <h3 className="font-semibold text-gray-800 text-lg">Why choose OneMentor?</h3>
+              <ul className="space-y-3">
                 <li className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-gray-700 text-base">Verified professional coaches</span>
+                  <span className="text-gray-600 text-sm md:text-base">Verified professional coaches</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-gray-700 text-base">Flexible scheduling options</span>
+                  <span className="text-gray-600 text-sm md:text-base">Flexible scheduling options</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-gray-700 text-base">AI-powered recommendations</span>
+                  <span className="text-gray-600 text-sm md:text-base">AI-powered recommendations</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-gray-700 text-base">Secure payment processing</span>
+                  <span className="text-gray-600 text-sm md:text-base">Secure payment processing</span>
                 </li>
               </ul>
             </div>
           </div>
 
           {/* Right Side - Signup Form */}
-          <div className="card glass-effect max-w-md w-full mx-auto spacing-extra-generous fade-in pt-8">
-            <div className="text-center mb-10 md:mb-12">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] mb-6">
-                <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="card glass-effect max-w-md w-full mx-auto p-8 fade-in">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] mb-4">
+                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
               </div>
-              <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
+              <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
                 Create Account
               </h2>
-              <p className="text-base lg:text-lg text-gray-600 leading-relaxed">
+              <p className="text-sm lg:text-base text-gray-600 leading-relaxed">
                 Join thousands of learners and coaches
               </p>
             </div>
 
-            <form onSubmit={handleSignup} className="space-y-7">
+            <form onSubmit={handleSignup} className="space-y-4">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-3">
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
                   Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -202,7 +183,7 @@ export default function Signup() {
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-3">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
                   Email Address <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -218,7 +199,7 @@ export default function Signup() {
               </div>
 
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-3">
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1.5">
                   Phone Number <span className="text-gray-400 text-xs">(Optional)</span>
                 </label>
                 <input
@@ -233,7 +214,7 @@ export default function Signup() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-3">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
                   Password <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -250,7 +231,7 @@ export default function Signup() {
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-3">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1.5">
                   Confirm Password <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -267,7 +248,7 @@ export default function Signup() {
               </div>
 
               <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-3">
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1.5">
                   I want to join as <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -287,12 +268,12 @@ export default function Signup() {
               <button
                 type="submit"
                 disabled={loading}
-                className="btn btn-primary w-full py-4 text-lg font-semibold mt-8"
+                className="btn btn-primary w-full py-3 text-base font-semibold mt-6"
               >
                 {loading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="spinner mr-2" style={{width: '20px', height: '20px', borderWidth: '2px'}}></div>
-                    Creating Account...
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
+                    <span>Creating Account...</span>
                   </div>
                 ) : (
                   "Create Account"
@@ -300,8 +281,8 @@ export default function Signup() {
               </button>
             </form>
 
-            <div className="mt-10 pt-6 border-t border-gray-200 text-center">
-              <p className="text-base text-gray-600">
+            <div className="mt-8 pt-6 border-t border-gray-200 text-center">
+              <p className="text-sm text-gray-600">
                 Already have an account?{" "}
                 <Link href="/login" className="text-[var(--primary)] font-semibold hover:underline">
                   Sign In

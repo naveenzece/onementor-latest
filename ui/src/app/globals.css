@@ -66,8 +66,7 @@
 
 /* Reset only specific elements, not all elements with Tailwind classes */
 body,
-h1, h2, h3, h4, h5, h6,
-p, ul, ol, li,
+h1, h2, h3, h4, h5, h6, ul, ol, li,
 blockquote, figure, figcaption,
 dl, dd {
   margin: 0;
