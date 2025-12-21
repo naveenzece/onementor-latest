@@ -5,26 +5,21 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
-import { ArrowLeftIcon, BuildingLibraryIcon, CreditCardIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, CreditCardIcon } from "@heroicons/react/24/outline";
 
 export default function AccountSetup() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    accountHolderName: "",
-    accountNumber: "",
-    ifscCode: "",
-    bankName: "",
-    branchName: "",
-    accountType: "savings", // savings or current
+    upiId: "",
   });
 
   useEffect(() => {
-    // Fetch existing bank details if any
+    // Fetch existing UPI details if any
     const userId = localStorage.getItem("userId");
     if (userId) {
       // TODO: Fetch from API when endpoint is available
-      // fetchBankDetails(userId);
+      // fetchUpiDetails(userId);
     }
   }, []);
 
@@ -33,35 +28,18 @@ export default function AccountSetup() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const validateIFSC = (ifsc) => {
-    // IFSC code format: 4 letters + 0 + 6 digits (e.g., HDFC0001234)
-    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-    return ifscRegex.test(ifsc.toUpperCase());
-  };
-
-  const validateAccountNumber = (accountNumber) => {
-    // Account number should be 9-18 digits
-    const accountRegex = /^\d{9,18}$/;
-    return accountRegex.test(accountNumber);
+  const validateUPI = (upi) => {
+    // UPI ID format: username@bankname (e.g., john@paytm, user123@oksbi)
+    const upiRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+$/;
+    return upiRegex.test(upi);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate IFSC Code
-    if (!validateIFSC(formData.ifscCode)) {
-      toastrError("Invalid IFSC code. Format: ABCD0123456");
-      return;
-    }
-
-    // Validate Account Number
-    if (!validateAccountNumber(formData.accountNumber)) {
-      toastrError("Account number must be 9-18 digits");
-      return;
-    }
-
-    if (!formData.accountHolderName || !formData.bankName) {
-      toastrError("Please fill all required fields");
+    // Validate UPI ID
+    if (!validateUPI(formData.upiId)) {
+      toastrError("Invalid UPI ID. Format: username@bankname");
       return;
     }
 
@@ -75,7 +53,6 @@ export default function AccountSetup() {
       }
 
       // TODO: Replace with actual API endpoint when available
-      // For now, just show success message
       const res = await fetch("http://localhost:8001/api/coach/account", {
         method: "POST",
         headers: {
@@ -84,32 +61,31 @@ export default function AccountSetup() {
         credentials: "include",
         body: JSON.stringify({
           user_id: userId,
-          ...formData,
-          ifscCode: formData.ifscCode.toUpperCase(),
+          upi_id: formData.upiId,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        toastrSuccess("Bank details saved successfully!");
-        
+        toastrSuccess("UPI ID saved successfully!");
+
         setTimeout(() => {
           router.push("/dashboard/coach");
         }, 1500);
       } else {
         const data = await res.json();
-        throw new Error(data.error || "Failed to save bank details");
+        throw new Error(data.error || "Failed to save UPI ID");
       }
     } catch (error) {
       console.error("Error:", error);
       // For now, show success even if API doesn't exist (for UI testing)
       if (error.message.includes("Failed to fetch") || error.message.includes("404")) {
-        toastrSuccess("Bank details form validated successfully! (API endpoint pending)");
+        toastrSuccess("UPI ID validated successfully! (API endpoint pending)");
         setTimeout(() => {
           router.push("/dashboard/coach");
         }, 1500);
       } else {
-        toastrError(error.message || "Failed to save bank details. Please try again.");
+        toastrError(error.message || "Failed to save UPI ID. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -131,10 +107,10 @@ export default function AccountSetup() {
             Back to Dashboard
           </button>
           <h1 className="text-4xl font-bold gradient-text mb-2">
-            Account Setup
+            Payment Setup
           </h1>
           <p className="text-gray-600 text-lg">
-            Add your bank details to receive payments
+            Add your UPI ID to receive payments
           </p>
         </div>
 
@@ -142,125 +118,32 @@ export default function AccountSetup() {
           <div className="card spacing-comfortable">
             <div className="flex items-center mb-6">
               <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center mr-3">
-                <BuildingLibraryIcon className="w-7 h-7 text-blue-600" />
+                <CreditCardIcon className="w-7 h-7 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Bank Details</h2>
-                <p className="text-sm text-gray-600">Secure bank information for payouts</p>
+                <h2 className="text-2xl font-bold text-gray-900">UPI Details</h2>
+                <p className="text-sm text-gray-600">Secure payment information for payouts</p>
               </div>
             </div>
 
             <div className="space-y-6">
-              {/* Account Holder Name */}
+              {/* UPI ID */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Account Holder Name <span className="text-red-500">*</span>
+                  UPI ID <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  name="accountHolderName"
-                  value={formData.accountHolderName}
+                  name="upiId"
+                  value={formData.upiId}
                   onChange={handleChange}
                   required
                   className="input-professional"
-                  placeholder="John Doe"
+                  placeholder="yourname@paytm"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Name as it appears on your bank account
+                  Format: username@bankname (e.g., john@paytm, user123@oksbi)
                 </p>
-              </div>
-
-              {/* Account Number */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Account Number <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="accountNumber"
-                  value={formData.accountNumber}
-                  onChange={handleChange}
-                  required
-                  maxLength={18}
-                  className="input-professional"
-                  placeholder="1234567890"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  9-18 digits
-                </p>
-              </div>
-
-              {/* IFSC Code */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  IFSC Code <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="ifscCode"
-                  value={formData.ifscCode}
-                  onChange={(e) => {
-                    const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    if (value.length <= 11) {
-                      setFormData((prev) => ({ ...prev, ifscCode: value }));
-                    }
-                  }}
-                  required
-                  maxLength={11}
-                  className="input-professional font-mono"
-                  placeholder="HDFC0001234"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Format: ABCD0123456 (4 letters + 0 + 6 alphanumeric)
-                </p>
-              </div>
-
-              {/* Bank Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bank Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="bankName"
-                  value={formData.bankName}
-                  onChange={handleChange}
-                  required
-                  className="input-professional"
-                  placeholder="HDFC Bank"
-                />
-              </div>
-
-              {/* Branch Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Branch Name
-                </label>
-                <input
-                  type="text"
-                  name="branchName"
-                  value={formData.branchName}
-                  onChange={handleChange}
-                  className="input-professional"
-                  placeholder="Main Branch"
-                />
-              </div>
-
-              {/* Account Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Account Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="accountType"
-                  value={formData.accountType}
-                  onChange={handleChange}
-                  required
-                  className="input-professional"
-                >
-                  <option value="savings">Savings Account</option>
-                  <option value="current">Current Account</option>
-                </select>
               </div>
             </div>
           </div>
@@ -274,7 +157,7 @@ export default function AccountSetup() {
                   Secure & Encrypted
                 </p>
                 <p className="text-xs text-blue-700">
-                  Your bank details are encrypted and stored securely. We use industry-standard security measures to protect your information.
+                  Your UPI ID is encrypted and stored securely. We use industry-standard security measures to protect your information.
                 </p>
               </div>
             </div>
@@ -297,11 +180,11 @@ export default function AccountSetup() {
             >
               {loading ? (
                 <div className="flex items-center">
-                  <div className="spinner mr-2" style={{width: '20px', height: '20px', borderWidth: '2px'}}></div>
+                  <div className="spinner mr-2" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
                   Saving...
                 </div>
               ) : (
-                "Save Bank Details"
+                "Save UPI ID"
               )}
             </button>
           </div>
@@ -312,4 +195,3 @@ export default function AccountSetup() {
     </div>
   );
 }
-

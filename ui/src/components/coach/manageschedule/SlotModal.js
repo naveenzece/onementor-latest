@@ -36,7 +36,7 @@ const SlotModal = ({ isOpen, onClose, selectedDate, selectedSlot, onSave, isEdit
             } else {
               slotDate = new Date(selectedSlot.date);
             }
-            
+
             // Validate date
             if (isNaN(slotDate.getTime())) {
               console.error("Invalid date from slot:", selectedSlot.date);
@@ -85,7 +85,7 @@ const SlotModal = ({ isOpen, onClose, selectedDate, selectedSlot, onSave, isEdit
             defaultStart.setHours(9, 0, 0);
             const defaultEnd = new Date(today);
             defaultEnd.setHours(10, 0, 0);
-            
+
             setFormData({
               date: today,
               startDateTime: defaultStart,
@@ -106,7 +106,7 @@ const SlotModal = ({ isOpen, onClose, selectedDate, selectedSlot, onSave, isEdit
           defaultStart.setHours(9, 0, 0);
           const defaultEnd = new Date(today);
           defaultEnd.setHours(10, 0, 0);
-          
+
           setFormData({
             date: today,
             startDateTime: defaultStart,
@@ -118,7 +118,7 @@ const SlotModal = ({ isOpen, onClose, selectedDate, selectedSlot, onSave, isEdit
         const date = selectedDate || new Date();
         // Validate date
         const validDate = isNaN(date.getTime()) ? new Date() : date;
-        
+
         const defaultStart = new Date(validDate);
         defaultStart.setHours(9, 0, 0);
 
@@ -147,6 +147,19 @@ const SlotModal = ({ isOpen, onClose, selectedDate, selectedSlot, onSave, isEdit
       return;
     }
 
+    // Check if the slot time is in the past
+    const now = new Date();
+    if (formData.endDateTime < now) {
+      toastrError("Cannot create or update slots with past times. Please select a future time.");
+      return;
+    }
+
+    // Also check if start time is in the past (for better UX)
+    if (formData.startDateTime < now) {
+      toastrError("Start time cannot be in the past. Please select a future time.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -159,7 +172,7 @@ const SlotModal = ({ isOpen, onClose, selectedDate, selectedSlot, onSave, isEdit
       };
 
       const formattedDate = formatDate(formData.date);
-      
+
       const formatTime = (date) => {
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -177,7 +190,7 @@ const SlotModal = ({ isOpen, onClose, selectedDate, selectedSlot, onSave, isEdit
       }
 
       await onSave(slotData);
-      
+
       // Reset and close
       setFormData({
         date: selectedDate || new Date(),
@@ -196,13 +209,13 @@ const SlotModal = ({ isOpen, onClose, selectedDate, selectedSlot, onSave, isEdit
   const handleDateChange = (date) => {
     setFormData(prev => {
       const newDate = date || prev.date;
-      
+
       // Validate date
       if (!newDate || isNaN(newDate.getTime())) {
         console.error("Invalid date selected");
         return prev; // Don't update if date is invalid
       }
-      
+
       // Update times to match new date
       const newStart = new Date(newDate);
       if (prev.startDateTime && !isNaN(prev.startDateTime.getTime())) {
@@ -245,6 +258,13 @@ const SlotModal = ({ isOpen, onClose, selectedDate, selectedSlot, onSave, isEdit
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+
+          {/* Info Message */}
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-700">
+              ℹ️ Note: You cannot create or update slots with past times.
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -296,7 +316,20 @@ const SlotModal = ({ isOpen, onClose, selectedDate, selectedSlot, onSave, isEdit
                   placeholderText="Select start time"
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-gray-800 font-medium"
                   wrapperClassName="w-full"
-                  minTime={new Date(new Date(formData.date).setHours(8, 0, 0))}
+                  minTime={(() => {
+                    const selectedDate = new Date(formData.date);
+                    const today = new Date();
+                    selectedDate.setHours(0, 0, 0, 0);
+                    today.setHours(0, 0, 0, 0);
+
+                    // If selected date is today, use current time as minimum
+                    if (selectedDate.getTime() === today.getTime()) {
+                      const now = new Date();
+                      return new Date(new Date(formData.date).setHours(now.getHours(), now.getMinutes(), 0));
+                    }
+                    // Otherwise, use 8 AM as minimum
+                    return new Date(new Date(formData.date).setHours(8, 0, 0));
+                  })()}
                   maxTime={new Date(new Date(formData.date).setHours(22, 0, 0))}
                   required
                 />

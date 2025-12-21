@@ -10,40 +10,55 @@ exports.getSlotsByMentor = async (req, res) => {
     console.log("getSlotsByMentor - query params:", { date, is_booked, is_active });
 
     let query = `
-      SELECT id, date, start_time, end_time, is_booked, is_active, created_at, amount, currency
-      FROM mentor_slots 
-      WHERE mentor_id = ?
+      SELECT 
+        ms.id, 
+        ms.date, 
+        ms.start_time, 
+        ms.end_time, 
+        ms.is_booked, 
+        ms.is_active, 
+        ms.created_at, 
+        ms.amount, 
+        ms.currency,
+        b.meeting_link,
+        b.user_id as booked_by,
+        u.name as user_name,
+        u.email as user_email
+      FROM mentor_slots ms
+      LEFT JOIN bookings b ON ms.id = b.slot_id AND b.status IN ('confirmed', 'completed')
+      LEFT JOIN users u ON b.mentor_id = u.id
+      WHERE ms.mentor_id = ?
     `;
     const params = [mentorId];
 
     if (date) {
-      query += " AND date = ?";
+      query += " AND ms.date = ?";
       params.push(date);
     }
 
     if (is_booked !== undefined && is_booked !== '') {
       // Handle both string and number values: '0', 0, 'false', 'true', '1', 1
       const bookedValue = (is_booked === 'true' || is_booked === '1' || is_booked === 1) ? 1 : 0;
-      query += " AND is_booked = ?";
+      query += " AND ms.is_booked = ?";
       params.push(bookedValue);
     }
 
     if (is_active !== undefined && is_active !== '') {
       // Handle both string and number values: '0', 0, 'false', 'true', '1', 1
       const activeValue = (is_active === 'true' || is_active === '1' || is_active === 1) ? 1 : 0;
-      query += " AND is_active = ?";
+      query += " AND ms.is_active = ?";
       params.push(activeValue);
     }
 
-    query += " ORDER BY date, start_time";
+    query += " ORDER BY ms.date, ms.start_time";
 
     console.log("Final query:", query);
     console.log("Query params:", params);
 
     const [results] = await db.query(query, params);
-    
+
     console.log(`Found ${results.length} slots for mentor ${mentorId}`);
-    
+
     // Also check if mentor has any slots at all (for debugging)
     if (results.length === 0) {
       const [allSlots] = await db.query(
@@ -52,11 +67,11 @@ exports.getSlotsByMentor = async (req, res) => {
       );
       console.log(`Total slots for mentor ${mentorId}:`, allSlots[0]?.total || 0);
     }
-    
+
     // Format dates to ensure YYYY-MM-DD format (avoid timezone issues)
     const formattedResults = results.map(slot => {
       let formattedDate = slot.date;
-      
+
       // If date is a Date object, format it as YYYY-MM-DD
       if (slot.date instanceof Date) {
         const year = slot.date.getFullYear();
@@ -76,15 +91,15 @@ exports.getSlotsByMentor = async (req, res) => {
       else if (typeof slot.date === 'string') {
         formattedDate = slot.date.split(' ')[0];
       }
-      
+
       return {
         ...slot,
         date: formattedDate
       };
     });
-    
+
     console.log("Formatted results:", JSON.stringify(formattedResults, null, 2));
-    
+
     res.json(formattedResults);
   } catch (err) {
     console.error("DB Error:", err);
@@ -137,9 +152,9 @@ exports.createSlot = async (req, res) => {
       [mentor_id, date, start_time, end_time]
     );
 
-    res.status(201).json({ 
+    res.status(201).json({
       message: "Slot created successfully",
-      id: result.insertId 
+      id: result.insertId
     });
   } catch (err) {
     console.error("DB Error:", err);

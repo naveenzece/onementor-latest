@@ -48,7 +48,7 @@ const CalendarSlots = ({ slots = [], onSelectSlot, onSelectDate }) => {
             // Parse time - handle HH:mm format
             const timeParts = slot.start_time ? slot.start_time.split(":") : ["9", "0"];
             const [startHour, startMin] = timeParts.map(Number);
-            
+
             const endTimeParts = slot.end_time ? slot.end_time.split(":") : ["10", "0"];
             const [endHour, endMin] = endTimeParts.map(Number);
 
@@ -65,11 +65,16 @@ const CalendarSlots = ({ slots = [], onSelectSlot, onSelectDate }) => {
               return null;
             }
 
+            // Check if slot is in the past
+            const isPast = end < new Date();
+
             return {
               id: slot.id,
-              title: slot.is_booked 
-                ? `Booked (${slot.start_time || ''} - ${slot.end_time || ''})` 
-                : `${slot.start_time || ''} - ${slot.end_time || ''}`,
+              title: isPast
+                ? `(${slot.start_time || ''} - ${slot.end_time || ''})`
+                : slot.is_booked
+                  ? `Booked (${slot.start_time || ''} - ${slot.end_time || ''})`
+                  : `${slot.start_time || ''} - ${slot.end_time || ''}`,
               start,
               end,
               resource: slot,
@@ -103,7 +108,29 @@ const CalendarSlots = ({ slots = [], onSelectSlot, onSelectDate }) => {
   // Custom event style
   const eventStyleGetter = (event) => {
     const isBooked = event.resource.is_booked;
-    
+    const now = new Date();
+    const isPast = event.end < now;
+
+    // If slot is in the past, show in grey
+    if (isPast) {
+      return {
+        style: {
+          backgroundColor: "#9ca3af",
+          borderColor: "#6b7280",
+          borderRadius: "8px",
+          opacity: 0.7,
+          color: "white",
+          border: "none",
+          padding: "4px 8px",
+          fontSize: "12px",
+          fontWeight: "600",
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+        },
+      };
+    }
+
     return {
       style: {
         backgroundColor: isBooked ? "#ef4444" : "#10b981",
@@ -125,9 +152,13 @@ const CalendarSlots = ({ slots = [], onSelectSlot, onSelectDate }) => {
   // Custom tooltip
   const customEvent = ({ event }) => {
     const slot = event.resource;
+    const isPast = event.end < new Date();
+
     return (
       <div className="flex items-center gap-2">
-        {slot.is_booked ? (
+        {isPast ? (
+          <CalendarIcon className="w-3 h-3" />
+        ) : slot.is_booked ? (
           <XCircle className="w-3 h-3" />
         ) : (
           <CheckCircle className="w-3 h-3" />
@@ -152,7 +183,7 @@ const CalendarSlots = ({ slots = [], onSelectSlot, onSelectDate }) => {
             </span>
           )}
         </div>
-        
+
         {/* Legend */}
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
@@ -162,6 +193,10 @@ const CalendarSlots = ({ slots = [], onSelectSlot, onSelectDate }) => {
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-red-500"></div>
             <span className="text-gray-600">Booked</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-gray-400"></div>
+            <span className="text-gray-600">Past</span>
           </div>
         </div>
       </div>

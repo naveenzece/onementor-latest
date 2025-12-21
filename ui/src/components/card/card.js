@@ -7,9 +7,9 @@ export default function Card({ title, icon, link, description, disabled = false,
   const content = (
     <div className={`
       card h-full p-6 transition-all duration-300 group relative
-      ${disabled 
-        ? 'bg-gray-100 cursor-not-allowed opacity-60' 
-        : 'bg-white hover:bg-gradient-to-br hover:from-[var(--primary)] hover:to-[var(--secondary)] cursor-pointer'
+      ${disabled
+        ? 'bg-gray-100 cursor-not-allowed opacity-60'
+        : 'bg-white hover:shadow-2xl hover:scale-[1.02] cursor-pointer'
       }
     `}>
       {disabled && (
@@ -19,26 +19,26 @@ export default function Card({ title, icon, link, description, disabled = false,
       )}
       <div className="flex flex-col h-full">
         <div className={`
-          flex items-center justify-center w-14 h-14 rounded-xl mb-4 transition-all duration-300
+          flex items-center justify-center w-14 h-14 rounded-xl mb-4
           ${disabled
             ? 'bg-gray-300'
-            : 'bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] group-hover:bg-white'
+            : 'bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)]'
           }
         `}>
-          <div className={disabled ? 'text-gray-500' : 'text-white group-hover:text-[var(--primary)] transition-colors duration-300'}>
+          <div className={disabled ? 'text-gray-500' : 'text-white'}>
             {icon}
           </div>
         </div>
         <h3 className={`
-          text-xl font-bold mb-2 transition-colors
-          ${disabled ? 'text-gray-500' : 'text-gray-900 group-hover:text-white'}
+          text-xl font-bold mb-2
+          ${disabled ? 'text-gray-500' : 'text-gray-900'}
         `}>
           {title}
         </h3>
         {description && (
           <p className={`
-            text-sm transition-colors
-            ${disabled ? 'text-gray-400' : 'text-gray-600 group-hover:text-gray-100'}
+            text-sm
+            ${disabled ? 'text-gray-400' : 'text-gray-600'}
           `}>
             {description}
           </p>
@@ -50,9 +50,9 @@ export default function Card({ title, icon, link, description, disabled = false,
         )}
         <div className={`
           mt-auto pt-4 flex items-center font-medium
-          ${disabled 
-            ? 'text-gray-400' 
-            : 'text-[var(--primary)] group-hover:text-white'
+          ${disabled
+            ? 'text-gray-400'
+            : 'text-[var(--primary)]'
           }
         `}>
           <span className="text-sm">
