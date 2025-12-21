@@ -26,7 +26,7 @@ exports.getSlotsByMentor = async (req, res) => {
         u.email as user_email
       FROM mentor_slots ms
       LEFT JOIN bookings b ON ms.id = b.slot_id AND b.status IN ('confirmed', 'completed')
-      LEFT JOIN users u ON b.mentor_id = u.id
+      LEFT JOIN users u ON b.user_id = u.id
       WHERE ms.mentor_id = ?
     `;
     const params = [mentorId];
