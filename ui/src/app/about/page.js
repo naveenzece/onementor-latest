@@ -32,10 +32,10 @@ export default function AboutPage() {
         </div>
 
         {/* Mission Section */}
-        <div className="card p-8 md:p-10 mb-12 md:mb-16">
-          <div className="text-center">
+        <div className="card ml-6 mr-6  md:p-10 mb-12 md:mb-16 ">
+          <div className="text-center ">
             <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">Our Mission</h2>
-            <p className="text-base lg:text-lg text-gray-600 leading-relaxed max-w-4xl mx-auto">
+            <p className="text-base lg:text-lg text-gray-600 leading-relaxed max-w-4xl mx-auto ">
               At OneMentor, we believe that everyone has the potential to achieve greatness. Our mission is to connect
               individuals with expert mentors who can guide them on their journey to personal and professional success.
               We're building a platform that makes quality mentorship accessible to everyone, regardless of their background or circumstances.
@@ -46,7 +46,7 @@ export default function AboutPage() {
         {/* Values Section */}
         <div className="mb-12 md:mb-16">
           <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 text-center mb-10">Our Values</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 p-20">
 
             {/* Excellence */}
             <div className="card text-center p-6 group hover:scale-105 transition-transform duration-300">
@@ -90,7 +90,7 @@ export default function AboutPage() {
         </div>
 
         {/* Story Section */}
-        <div className="card p-8 md:p-10 mb-12 md:mb-16">
+        <div className="card p-8 ml-6 mr-6 md:p-10 mb-12 md:mb-16">
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
             <div>
               <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">Our Story</h2>

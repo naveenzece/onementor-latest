@@ -6,6 +6,8 @@ const path = require('path');
 const session = require('express-session');
 require('dotenv').config();
 
+
+
 // Routes
 const userRouter = require('./routes/usersRoute');
 const authRoutes = require("./routes/authRoute");

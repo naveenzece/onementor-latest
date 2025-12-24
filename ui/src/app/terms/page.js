@@ -204,16 +204,16 @@ export default function TermsPage() {
           </div>
 
           {/* Contact Information */}
-          <div className="card spacing-generous">
+          <div className="card spacing-generous mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">11. Contact Information</h2>
             <div className="prose prose-lg max-w-none">
               <p className="text-gray-600 leading-relaxed mb-4">
                 If you have any questions about these Terms, please contact us:
               </p>
               <div className="bg-gray-50 p-6 rounded-lg">
-                <p className="text-gray-700 mb-2"><strong>Email:</strong> legal@onementor.com</p>
-                <p className="text-gray-700 mb-2"><strong>Address:</strong> 123 Innovation Drive, Tech City, TC 12345</p>
-                <p className="text-gray-700"><strong>Phone:</strong> +1 (555) 123-4567</p>
+                <p className="text-gray-700 mb-2"><strong>Email:</strong> prwebinfo2024@gmail.com</p>
+                <p className="text-gray-700 mb-2"><strong>Address:</strong> Tirunelveli</p>
+                <p className="text-gray-700"><strong>Phone:</strong> 7397 392 888</p>
               </div>
             </div>
           </div>

@@ -268,7 +268,7 @@ export default function FAQPage() {
         </div>
 
         {/* Still Need Help */}
-        <div className="mt-16 md:mt-20">
+        <div className="mt-16 md:mt-20 mb-8">
           <div className="card spacing-generous text-center">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Still Need Help?</h2>
             <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">

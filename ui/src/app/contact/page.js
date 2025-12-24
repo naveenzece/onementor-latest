@@ -36,10 +36,10 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 ">
       <MainHeader />
 
-      <main className="flex-grow container-professional py-16 md:py-20 lg:py-24 fade-in">
+      <main className="flex-grow container-professional py-16 md:py-20 lg:py-24 fade-in ">
         {/* Hero Section */}
         <div className="text-center mb-16 md:mb-20">
           <div className="inline-block mb-8">
@@ -79,8 +79,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">Email</h3>
-                    <p className="text-gray-600">support@onementor.com</p>
-                    <p className="text-gray-600">info@onementor.com</p>
+                    <p className="text-gray-600">prwebinfo2024@gmail.com</p>
+                    
                   </div>
                 </div>
 
@@ -93,8 +93,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">Phone</h3>
-                    <p className="text-gray-600">+1 (555) 123-4567</p>
-                    <p className="text-gray-600">Mon-Fri 9AM-6PM EST</p>
+                    <p className="text-gray-600">+91 7397392888</p>
+                    {/* <p className="text-gray-600">Mon-Fri 9AM-6PM EST</p> */}
                   </div>
                 </div>
 
@@ -108,15 +108,15 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">Office</h3>
-                    <p className="text-gray-600">123 Innovation Drive</p>
-                    <p className="text-gray-600">Tech City, TC 12345</p>
+                    <p className="text-gray-600">Tirunelveli</p>
+                    {/* <p className="text-gray-600">Tech City, TC 12345</p> */}
                   </div>
                 </div>
               </div>
             </div>
 
             {/* FAQ Quick Links */}
-            <div className="card spacing-generous">
+            {/* <div className="card spacing-generous">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Quick Help</h3>
               <p className="text-gray-600 mb-6">Find answers to common questions:</p>
               <div className="space-y-3">
@@ -124,7 +124,7 @@ export default function ContactPage() {
                   → How do I book a session?
                 </a>
                 <a href="/faq" className="block text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors">
-                  → How do I become a coach?
+                  → How do I become a coach? 
                 </a>
                 <a href="/faq" className="block text-[var(--primary)] hover:text-[var(--primary-dark)] transition-colors">
                   → What are the pricing options?
@@ -133,11 +133,11 @@ export default function ContactPage() {
                   → How do I cancel a session?
                 </a>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Contact Form */}
-          <div className="card spacing-generous">
+          <div className="card spacing-generous mb-10">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">Send us a Message</h2>
             
             {submitStatus === 'success' && (
@@ -239,7 +239,7 @@ export default function ContactPage() {
         </div>
 
         {/* Response Time */}
-        <div className="mt-16 md:mt-20">
+        {/* <div className="mt-16 md:mt-20">
           <div className="card spacing-generous text-center">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">Response Time</h3>
             <p className="text-lg text-gray-600 mb-6">
@@ -260,7 +260,7 @@ export default function ContactPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
       </main>
 
       <Footer />

@@ -5,7 +5,7 @@ import Footer from "@/components/Footer/footer";
 import Image from "next/image";
 
 export default function Features() {
-  return (
+  return (  
     <div className="flex flex-col min-h-screen">
       <MainHeader />
 
@@ -30,7 +30,7 @@ export default function Features() {
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 mb-12 md:mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 mb-12 md:mb-16 p-20">
 
           {/* Expert Coaches */}
           <div className="card text-center p-6 group hover:scale-105 transition-transform duration-300">
