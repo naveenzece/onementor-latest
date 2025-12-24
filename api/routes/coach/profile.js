@@ -6,6 +6,9 @@ const { createMentorProfile, getMentorProfile } = require("../../controller/coac
 const { generateCustomerId } = require("../../util/generators");
 const db = require("../../config/mysql");
 
+// Add env flag (case-insensitive support for both useJuspay and USE_JUSPAY)
+const useJuspay = String(process.env.useJuspay || process.env.USE_JUSPAY || '').toLowerCase() === 'true';
+
 // Multer config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
@@ -142,16 +145,31 @@ router.post("/vpa", async (req, res) => {
     // Generate consistent customerId using utility function
     const customerId = generateCustomerId(mentor_id, user.email);
 
-    // Validate VPA using JUSPAY payout API
-    const { validateVPA } = require("../../services/paymentService");
-    const validationResult = await validateVPA({
-      vpa: vpa,
-      name: name || user.name || user.email.split('@')[0],
-      email: user.email,
-      phone: user.phone || '',
-      customerId: customerId,
-      beneId: profile.beneficiary_id || undefined
-    });
+    // Validate VPA using JUSPAY payout API or mock based on env
+    let validationResult;
+    if (useJuspay) {
+      const { validateVPA } = require("../../services/paymentService");
+      validationResult = await validateVPA({
+        vpa: vpa,
+        name: name || user.name || user.email.split('@')[0],
+        email: user.email,
+        phone: user.phone || '',
+        customerId: customerId,
+        beneId: profile.beneficiary_id || undefined
+      });
+    } else {
+      // Mock successful validation for local/testing environments
+      validationResult = {
+        success: true,
+        status: 'valid',
+        uniqueId: `MOCK-BENE-${mentor_id}`,
+        beneId: `MOCK-BENE-${mentor_id}`,
+        nameAtBank: name || user.name || user.email.split('@')[0],
+        responseCode: 'MOCK_200',
+        responseMessage: 'Mock validation successful',
+        responseData: null
+      };
+    }
 
     if (!validationResult.success) {
       // Update status to failed
@@ -265,9 +283,26 @@ router.get("/beneficiary/:mentor_id/status", async (req, res) => {
     // Generate customerId using utility function
     const customerId = generateCustomerId(profile.user_id, profile.email);
 
-    // Get beneficiary status from JUSPAY
-    const { getBeneficiaryStatus } = require("../../services/paymentService");
-    const statusResult = await getBeneficiaryStatus(customerId, profile.beneficiary_id);
+    // Get beneficiary status from JUSPAY or return mock when useJuspay is false
+    let statusResult;
+    if (useJuspay) {
+      const { getBeneficiaryStatus } = require("../../services/paymentService");
+      statusResult = await getBeneficiaryStatus(customerId, profile.beneficiary_id);
+    } else {
+      // Mock a valid status for testing local flows
+      statusResult = {
+        success: true,
+        status: profile.vpa_status ? profile.vpa_status.toUpperCase() : 'VALID',
+        uniqueId: profile.beneficiary_id,
+        nameAtBank: profile.vpa_name_at_bank || null,
+        responseCode: 'MOCK_200',
+        responseMessage: 'Mock beneficiary status',
+        validationType: 'mock',
+        beneDetails: null,
+        updatedAt: new Date(),
+        transactions: []
+      };
+    }
 
     if (!statusResult.success) {
       return res.status(400).json({ 

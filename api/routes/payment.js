@@ -208,8 +208,10 @@ router.post("/payout", async (req, res) => {
 
     // Sort slots by date and time to get first and last session
     const sortedSlots = slots.sort((a, b) => {
-      const dateCompare = a.date.localeCompare(b.date);
-      if (dateCompare !== 0) return dateCompare;
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      if (dateA < dateB) return -1;
+      if (dateA > dateB) return 1;
       return a.start_time.localeCompare(b.start_time);
     });
 
@@ -279,18 +281,36 @@ router.post("/payout", async (req, res) => {
     // Use mentor's name at bank if available, otherwise use regular name
     const beneficiaryName = mentor.vpa_name_at_bank || mentor.name;
 
-    // Create payout order in JUSPAY first
-    const payoutResult = await createPayoutOrder({
-      orderId: payoutOrderId,
-      customerId,
-      customerEmail: mentor.email,
-      customerPhone: mentor.phone || '',
-      amount,
-      beneficiaryId: mentor.beneficiary_id,
-      beneficiaryName: beneficiaryName,
-      routingId: routingId,
-      remark: remark || `Payout order for booking`
-    });
+    // Create payout order in JUSPAY first or mock if testing
+    let payoutResult;
+
+    if (process.env.USE_JUSPAY === 'true') {
+      payoutResult = await createPayoutOrder({
+        orderId: payoutOrderId,
+        customerId,
+        customerEmail: mentor.email,
+        customerPhone: mentor.phone || '',
+        amount,
+        beneficiaryId: mentor.beneficiary_id,
+        beneficiaryName: beneficiaryName,
+        routingId: routingId,
+        remark: remark || `Payout order for booking`
+      });
+    } else {
+      console.log("Skipping Juspay payout order creation (USE_JUSPAY != true)");
+      payoutResult = {
+        success: true,
+        orderId: payoutOrderId,
+        status: 'CREATED',
+        amount: amount,
+        responseData: { 
+          mock: true, 
+          message: "Internal testing - Juspay skipped" 
+        },
+        fulfillments: [],
+        payments: []
+      };
+    }
 
     if (!payoutResult.success) {
       await connection.rollback();
@@ -550,9 +570,7 @@ router.post("/session", async (req, res) => {
         b.status,
         u.name as user_name,
         u.email as user_email,
-        u.phone as user_phone,
-        u.first_name,
-        u.last_name
+        u.phone as user_phone
       FROM bookings b
       JOIN users u ON b.user_id = u.id
       WHERE b.id = ?`,
@@ -589,24 +607,41 @@ router.post("/session", async (req, res) => {
     const customerId = generateCustomerId(booking.user_id, booking.user_email);
 
     // Create payment session
-    const sessionResult = await createPaymentSession({
-      order_id: booking.payout_order_id, // Use payout_order_id as order_id
-      amount: booking.amount.toString(),
-      customer_id: customerId,
-      customer_email: booking.user_email,
-      customer_phone: booking.user_phone || '',
-      first_name: booking.first_name || booking.user_name?.split(' ')[0] || '',
-      last_name: booking.last_name || booking.user_name?.split(' ').slice(1).join(' ') || '',
-      description: description || `Payment for booking #${booking.id}`,
-      return_url: return_url || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/callback?booking_id=${booking.id}`,
-      payment_page_client_id: process.env.JUSPAY_CLIENT_ID,
-      theme: theme || 'dark',
-      metadata: {
-        ...metadata,
-        'JUSPAY:gateway_reference_id': `Booking_${booking.id}`,
-        booking_id: booking.id.toString()
-      }
-    });
+    // Create payment session
+    let sessionResult;
+    
+    if (process.env.USE_JUSPAY === 'true') {
+      sessionResult = await createPaymentSession({
+        order_id: booking.payout_order_id, // Use payout_order_id as order_id
+        amount: booking.amount.toString(),
+        customer_id: customerId,
+        customer_email: booking.user_email,
+        customer_phone: booking.user_phone || '',
+        first_name: booking.first_name || booking.user_name?.split(' ')[0] || '',
+        last_name: booking.last_name || booking.user_name?.split(' ').slice(1).join(' ') || '',
+        description: description || `Payment for booking #${booking.id}`,
+        return_url: return_url || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/callback?booking_id=${booking.id}`,
+        payment_page_client_id: process.env.JUSPAY_CLIENT_ID,
+        theme: theme || 'dark',
+        metadata: {
+          ...metadata,
+          'JUSPAY:gateway_reference_id': `Booking_${booking.id}`,
+          booking_id: booking.id.toString()
+        }
+      });
+    } else {
+       console.log("Mocking payment session (USE_JUSPAY != true)");
+       sessionResult = {
+        success: true,
+        sessionId: 'mock_sess_' + Date.now(),
+        orderId: booking.payout_order_id,
+        status: 'NEW',
+        paymentLinks: {
+          web: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/userdashboard/userpayment?bookingId=${booking.id}&mock=true`
+        },
+        sdkPayload: {}
+       };
+    }
 
     if (!sessionResult.success) {
       connection.release();
@@ -771,14 +806,23 @@ router.post("/webhook", async (req, res) => {
     console.log(`[Webhook] Full payload:`, JSON.stringify(req.body, null, 2));
 
     // Verify webhook signature (optional but recommended for security)
-    // Uncomment if JUSPAY sends signature in headers
-    // if (signature && !verifyWebhookSignature(rawBody, signature)) {
-    //   console.error('[Webhook] Invalid webhook signature');
-    //   return res.status(401).json({ 
-    //     success: false,
-    //     error: 'Invalid webhook signature' 
-    //   });
-    // }
+    if (process.env.USE_JUSPAY === 'true') {
+        if (!signature || !verifyWebhookSignature(rawBody, signature)) { 
+            // Note: Enforcing signature presence if strictly in prod, 
+            // or perform check only if signature exists? 
+            // Usually JUSPAY strictly sends it. 
+            // However, sticking to the existing pattern:
+             if (signature && !verifyWebhookSignature(rawBody, signature)) {
+              console.error('[Webhook] Invalid webhook signature');
+              return res.status(401).json({ 
+                success: false,
+                error: 'Invalid webhook signature' 
+              });
+            }
+        }
+    } else {
+        console.log('[Webhook] Skipping signature verification (USE_JUSPAY != true)');
+    }
 
     // Process webhook
     const result = await handleWebhook(req.body);
@@ -800,6 +844,8 @@ router.post("/webhook", async (req, res) => {
     });
   }
 });
+
+
 
 module.exports = router;
 

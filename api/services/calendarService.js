@@ -31,7 +31,7 @@ function createOAuth2Client() {
  * @param {string} role - User role ('mentor' or 'user')
  * @returns {string} Authorization URL
  */
-function getAuthUrl(userId, role = 'mentor') {
+function getAuthUrl(userId, role = 'mentor', extraState = null) {
   // Use appropriate redirect URI based on role
   const redirectUri = role === 'mentor'
     ? (process.env.GOOGLE_REDIRECT_URI || `${process.env.API_BASE_URL || 'http://localhost:8001'}/api/mentor/calendar/callback`)
@@ -43,11 +43,25 @@ function getAuthUrl(userId, role = 'mentor') {
     redirectUri
   );
 
+  // Build state: if extraState provided, include it along with userId
+  let stateValue;
+  if (extraState && typeof extraState === 'object') {
+    try {
+      const payload = { userId: userId, ...extraState };
+      // URI encode JSON to be safe in query string
+      stateValue = encodeURIComponent(JSON.stringify(payload));
+    } catch (e) {
+      stateValue = userId.toString();
+    }
+  } else {
+    stateValue = userId.toString();
+  }
+
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
     prompt: 'consent', // Force consent screen to get refresh token
-    state: userId.toString() // Pass user ID in state
+    state: stateValue // Pass state
   });
 
   return authUrl;

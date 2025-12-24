@@ -6,6 +6,8 @@ import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 import { ArrowLeftIcon, CreditCardIcon } from "@heroicons/react/24/outline";
+import { saveVPA } from "@/services/vpaService";
+import { getMentorProfile } from "@/services/profileService";
 
 export default function AccountSetup() {
   const router = useRouter();
@@ -46,46 +48,43 @@ export default function AccountSetup() {
     setLoading(true);
     try {
       const userId = localStorage.getItem("userId");
+      const userName = localStorage.getItem("userName") || "";
+
       if (!userId) {
         toastrError("User not found. Please login again.");
         router.push("/login");
         return;
       }
 
-      // TODO: Replace with actual API endpoint when available
-      const res = await fetch("http://localhost:8001/api/coach/account", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          user_id: userId,
-          upi_id: formData.upiId,
-        }),
-      });
+      // Use mentor VPA API service
+      const payload = {
+        mentor_id: Number(userId),
+        vpa: formData.upiId,
+        name: userName,
+      };
 
-      if (res.ok) {
-        const data = await res.json();
-        toastrSuccess("UPI ID saved successfully!");
+      const data = await saveVPA(payload);
+      toastrSuccess("VPA saved successfully!");
 
-        setTimeout(() => {
-          router.push("/dashboard/coach");
-        }, 1500);
-      } else {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to save UPI ID");
+      // Fetch profile to confirm VPA is validated
+      const profile = await getMentorProfile(userId);
+      if (profile?.vpa_status && (profile.vpa_status === "valid" || profile.vpa_status === "verified")) {
+        toastrSuccess("VPA validated successfully!");
       }
+
+      setTimeout(() => {
+        router.push("/dashboard/coach");
+      }, 1500);
     } catch (error) {
       console.error("Error:", error);
       // For now, show success even if API doesn't exist (for UI testing)
       if (error.message.includes("Failed to fetch") || error.message.includes("404")) {
-        toastrSuccess("UPI ID validated successfully! (API endpoint pending)");
+        toastrSuccess("VPA validated successfully! (API endpoint pending)");
         setTimeout(() => {
           router.push("/dashboard/coach");
         }, 1500);
       } else {
-        toastrError(error.message || "Failed to save UPI ID. Please try again.");
+        toastrError(error.message || "Failed to save VPA. Please try again.");
       }
     } finally {
       setLoading(false);

@@ -4,7 +4,8 @@ const db = require('../config/mysql');
 
 // JUSPAY Configuration
 const JUSPAY_MERCHANT_ID = process.env.JUSPAY_MERCHANT_ID || 'ONEMENTOR';
-const JUSPAY_API_KEY = process.env.JUSPAY_API_KEY || '770CA820CB74397AD51087EC5CA9F0';
+const JUSPAY_API_KEY = process.env.JUSPAY_API_KEY || '68757B44F6447DE8D36E9C484504B2'
+//'770CA820CB74397AD51087EC5CA9F0';
 const JUSPAY_CLIENT_ID = process.env.JUSPAY_CLIENT_ID || '';
 const JUSPAY_BASE_URL = process.env.JUSPAY_BASE_URL || 'https://api.juspay.in';
 const JUSPAY_SANDBOX_URL = process.env.JUSPAY_SANDBOX_URL || 'https://sandbox.juspay.in';
@@ -593,6 +594,120 @@ async function handleWebhook(webhookData) {
           slotIds
         );
         console.log(`Marked ${updateResult.affectedRows} slot(s) as booked`);
+      
+        // --- CALENDAR & EMAIL INTEGRATION START ---
+        
+        // 1. Fetch User and Mentor Details
+        const [userDetails] = await connection.query(
+            `SELECT name, email, google_calendar_refresh_token FROM users WHERE id = ?`,
+            [booking.user_id]
+        );
+        const [mentorDetails] = await connection.query(
+            `SELECT name, email, google_calendar_refresh_token FROM users WHERE id = ?`,
+            [booking.mentor_id]
+        );
+
+        if(userDetails.length && mentorDetails.length) {
+            const student = userDetails[0];
+            const mentor = mentorDetails[0];
+            
+            // 2. Fetch Slot Times for Event
+            const [slotsData] = await connection.query(
+                `SELECT date, start_time, end_time FROM mentor_slots WHERE id IN (${placeholders}) ORDER BY date, start_time`,
+                slotIds
+            );
+
+            if(slotsData.length > 0) {
+                 const firstSlot = slotsData[0];
+                 const lastSlot = slotsData[slotsData.length - 1];
+                 
+                 // Construct Start/End Dates
+                 // Assumption: slots are on the same day or sequential. 
+                 // For now, taking First Slot Start and Last Slot End. 
+                 // Careful with Date + Time string construction.
+                 
+                 const startDateTime = new Date(`${firstSlot.date.toISOString().split('T')[0]}T${firstSlot.start_time}`); 
+                 const endDateTime = new Date(`${lastSlot.date.toISOString().split('T')[0]}T${lastSlot.end_time}`);
+
+                 const timeSlotsList = slotsData.map(s => `${s.start_time} - ${s.end_time}`);
+
+                 // 3. Create Google Calendar Event
+                 const calendarService = require('../services/calendarService'); // Lazy load to avoid circular deps if any
+                 
+                 const eventData = {
+                    summary: `Mentorship Session: ${student.name} with ${mentor.name}`,
+                    description: `OneMentor Session.\n\nStudent: ${student.name}\nMentor: ${mentor.name}\n\n Slots: ${timeSlotsList.join(', ')}`,
+                    start: startDateTime,
+                    end: endDateTime,
+                    attendees: [student.email, mentor.email] 
+                 };
+
+                 try {
+                    // Create event on Mentor's Calendar (Assuming Mentor connected structure logic)
+                    // Or prioritize System Admin Calendar? 
+                    // Prompt implies "add the event in mentor google calendar and user google calendar"
+                    // We can create it using the Mentor's credential if present.
+                    
+                    let calendarResult = null;
+                    if (mentor.google_calendar_refresh_token) {
+                         calendarResult = await calendarService.createCalendarEvent(booking.mentor_id, eventData, 'mentor');
+                    } else if (student.google_calendar_refresh_token) {
+                        // Fallback to student if mentor not connected? Usually Mentor hosts.
+                        // Or just skip if no one connected?
+                        console.log("Mentor calendar not connected, trying student...");
+                         calendarResult = await calendarService.createCalendarEvent(booking.user_id, eventData, 'user');
+                    } else {
+                        console.log("No calendar credentials found for event creation.");
+                    }
+
+                    if (calendarResult && calendarResult.meetLink) {
+                        const meetLink = calendarResult.meetLink;
+                        console.log("Google Meet Link Generated:", meetLink);
+
+                        // 4. Update Booking with Meet Link
+                         await connection.query(
+                            `UPDATE bookings SET meeting_link = ? WHERE id = ?`,
+                            [meetLink, booking.id]
+                        );
+
+                        // 5. Send Emails
+                        const { sendEmail } = require('../services/mailer');
+                        const { generateSessionConfirmationEmail } = require('../utils/emailTemplates/sessionConfirmation');
+                        
+                        const emailContent = generateSessionConfirmationEmail({
+                            studentName: student.name,
+                            mentorName: mentor.name,
+                            date: firstSlot.date.toDateString(),
+                            timeSlots: timeSlotsList,
+                            meetLink: meetLink,
+                            amount: booking.amount
+                        });
+
+                        // Send to Student
+                        await sendEmail({
+                            to: student.email,
+                            subject: emailContent.subject,
+                            html: emailContent.html
+                        });
+
+                        // Send to Mentor
+                        await sendEmail({
+                            to: mentor.email,
+                            subject: emailContent.subject,
+                            html: emailContent.html
+                        });
+                        
+                        console.log("Confirmation emails sent.");
+
+                    }
+
+                 } catch(calErr) {
+                     console.error("Calendar/Email Automation Error:", calErr);
+                     // Don't rollback payment for this, just log it.
+                 }
+            }
+        }
+        // --- CALENDAR & EMAIL INTEGRATION END ---
       }
     }
 

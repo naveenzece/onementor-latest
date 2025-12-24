@@ -31,6 +31,8 @@ const {
 router.get('/auth-url', async (req, res) => {
   try {
     const { user_id } = req.query;
+    // Optional booking draft params: coachId, selectedDate, selectedSlotId, sessionType
+    const { coachId, selectedDate, selectedSlotId, sessionType, return_to } = req.query;
 
     if (!user_id) {
       return res.status(400).json({ error: 'user_id is required' });
@@ -46,7 +48,18 @@ router.get('/auth-url', async (req, res) => {
       return res.status(403).json({ error: 'User not found or is not a regular user' });
     }
 
-    const authUrl = getAuthUrl(user_id, 'user');
+    // Build extra state if booking draft information was provided
+    let extraState = null;
+    if (return_to || coachId || selectedDate || selectedSlotId || sessionType) {
+      extraState = {};
+      if (return_to) extraState.returnTo = return_to;
+      if (coachId) extraState.coachId = coachId;
+      if (selectedDate) extraState.selectedDate = selectedDate;
+      if (selectedSlotId) extraState.selectedSlotId = selectedSlotId;
+      if (sessionType) extraState.sessionType = sessionType;
+    }
+
+    const authUrl = getAuthUrl(user_id, 'user', extraState);
     
     res.json({
       authUrl: authUrl,
@@ -91,8 +104,29 @@ router.get('/callback', async (req, res) => {
       return res.status(400).json({ error: 'Authorization code and state are required' });
     }
 
-    const userId = parseInt(state, 10);
-    if (isNaN(userId)) {
+    // State may be a plain userId (legacy) or an encoded JSON payload
+    let userId = null;
+    let parsedState = null;
+    try {
+      if (state) {
+        // Try to decode and parse JSON state first
+        try {
+          const decoded = decodeURIComponent(state);
+          parsedState = JSON.parse(decoded);
+          if (parsedState && parsedState.userId) {
+            userId = parseInt(parsedState.userId, 10);
+          }
+        } catch (inner) {
+          // Not JSON state; try numeric
+          const maybeId = parseInt(state, 10);
+          if (!isNaN(maybeId)) userId = maybeId;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse state:', e);
+    }
+
+    if (!userId || isNaN(userId)) {
       return res.status(400).json({ error: 'Invalid user ID in state' });
     }
 
@@ -143,8 +177,27 @@ router.get('/callback', async (req, res) => {
     // Save tokens to database (for user role)
     await saveCalendarTokens(userId, tokens.refresh_token, tokens.access_token, googleEmail, 'user');
 
-    // Redirect to frontend with success message
+    // Redirect to frontend with success message.
+    // If state contained returnTo=booking (or equivalent draft data), redirect user to booking page
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    try {
+      if (parsedState && parsedState.returnTo === 'booking') {
+        // Build booking URL with coachId and optional draft params
+        const params = new URLSearchParams();
+        params.set('calendar_connected', 'true');
+        if (parsedState.coachId) params.set('coachId', parsedState.coachId);
+        if (parsedState.selectedDate) params.set('selectedDate', parsedState.selectedDate);
+        if (parsedState.selectedSlotId) params.set('selectedSlotId', parsedState.selectedSlotId);
+        if (parsedState.sessionType) params.set('sessionType', parsedState.sessionType);
+
+        return res.redirect(`${frontendUrl}/dashboard/userdashboard/booksession?${params.toString()}`);
+      }
+    } catch (e) {
+      console.error('Error building booking redirect URL:', e);
+    }
+
+    // Default redirect to profile page
     res.redirect(`${frontendUrl}/dashboard/userdashboard/profile?calendar_connected=true`);
   } catch (error) {
     console.error('Error in OAuth callback:', error);

@@ -17,6 +17,7 @@ import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { useRouter } from "next/navigation";
 import { getMentorProfile } from "@/services/mentor/mentor";
+import { isVPAValid } from "@/services/profileService";
 
 export default function CoachDashboard() {
   const router = useRouter();
@@ -99,8 +100,8 @@ export default function CoachDashboard() {
       // Check slot setup completion: needs hourly_rate
       const slotComplete = !!(profile.hourly_rate && parseFloat(profile.hourly_rate) > 0);
 
-      // Account setup - for now set to false (will be implemented later)
-      const accountComplete = false;
+      // Account setup - check VPA validation status
+      const accountComplete = isVPAValid(profile);
 
       setSetupProgress({
         profileComplete,

@@ -5,9 +5,16 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001';
  * @param {number} userId - User ID
  * @returns {Promise<Object>} Response with authUrl
  */
-export async function getCalendarAuthUrl(userId) {
+export async function getCalendarAuthUrl(userId, opts = {}) {
   try {
-    const res = await fetch(`${API_BASE}/api/user/calendar/auth-url?user_id=${userId}`, {
+    const params = new URLSearchParams({ user_id: userId });
+    if (opts.returnTo) params.set('return_to', opts.returnTo);
+    if (opts.coachId) params.set('coachId', opts.coachId);
+    if (opts.selectedDate) params.set('selectedDate', opts.selectedDate);
+    if (opts.selectedSlotId) params.set('selectedSlotId', opts.selectedSlotId);
+    if (opts.sessionType) params.set('sessionType', opts.sessionType);
+
+    const res = await fetch(`${API_BASE}/api/user/calendar/auth-url?${params.toString()}`, {
       method: 'GET',
       credentials: 'include',
     });

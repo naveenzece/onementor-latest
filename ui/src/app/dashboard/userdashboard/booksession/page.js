@@ -7,14 +7,14 @@ import Footer from "@/components/Footer/footer";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 import { ArrowLeftIcon, CalendarDaysIcon, ClockIcon, CurrencyRupeeIcon } from "@heroicons/react/24/outline";
 import { getMentorProfile, getSlotsByMentor } from "@/services/mentor/mentor";
-import { bookSlot } from "@/services/booking/booking";
+import { getCalendarStatus, getCalendarAuthUrl } from "@/services/calendar/userCalendar";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 const BookSessionPage = () => {
   const [coach, setCoach] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
-  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedSlots, setSelectedSlots] = useState([]);
   const [sessionType, setSessionType] = useState("standard");
   const [loading, setLoading] = useState(false);
   const [availableSlots, setAvailableSlots] = useState([]);
@@ -24,7 +24,129 @@ const BookSessionPage = () => {
   const searchParams = useSearchParams();
   const coachId = searchParams.get('coachId');
 
+  const [calendarStatus, setCalendarStatus] = useState({ connected: false, email: null, connectedAt: null, loading: true });
+  const [pendingSlotIds, setPendingSlotIds] = useState(null);
+
+  async function fetchCalendarStatus(userId) {
+    try {
+      setCalendarStatus(prev => ({ ...prev, loading: true }));
+      const resp = await getCalendarStatus(userId);
+      if (resp && resp.error) {
+        setCalendarStatus({ connected: false, email: null, connectedAt: null, loading: false });
+        return;
+      }
+      setCalendarStatus({
+        connected: resp?.connected || false,
+        email: resp?.email || null,
+        connectedAt: resp?.connectedAt || null,
+        loading: false
+      });
+    } catch (err) {
+      console.error('Error fetching calendar status', err);
+      setCalendarStatus(prev => ({ ...prev, loading: false }));
+    }
+  }
+
+  const handleConnectCalendar = async () => {
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      toastrError('Please login to connect your calendar');
+      router.push('/login');
+      return;
+    }
+
+    try {
+      localStorage.setItem('pendingBookingDraft', JSON.stringify({
+        coachId,
+        selectedDate: selectedDate ? selectedDate.toISOString() : null,
+        selectedSlotIds: selectedSlots.map(s => s.id),
+        sessionType
+      }));
+
+      const resp = await getCalendarAuthUrl(userId, {
+        returnTo: 'booking',
+        coachId,
+        selectedDate: selectedDate ? selectedDate.toISOString() : null,
+        selectedSlotIds: selectedSlots.map(s => s.id),
+        sessionType
+      });
+      if (resp.error) {
+        toastrError(resp.error || 'Failed to get Google authorization URL');
+        return;
+      }
+
+      window.location.href = resp.authUrl;
+    } catch (err) {
+      console.error('Error initiating calendar connect', err);
+      toastrError('Failed to initiate calendar connection');
+    }
+  };
+
   useEffect(() => {
+    const handleCalendarUrlParams = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const userId = localStorage.getItem("userId");
+
+      if (userId) {
+        await fetchCalendarStatus(userId);
+      }
+
+      if (urlParams.get('calendar_connected') === 'true') {
+        toastrSuccess('Google Calendar connected successfully!');
+        const selectedDateParam = urlParams.get('selectedDate');
+        const selectedSlotIdsParam = urlParams.get('selectedSlotIds') || urlParams.get('selectedSlotId');
+        const sessionTypeParam = urlParams.get('sessionType');
+
+        if (selectedDateParam) {
+          try {
+            setSelectedDate(new Date(selectedDateParam));
+          } catch (e) {
+            console.error('Invalid selectedDate param:', e);
+          }
+        }
+        if (sessionTypeParam) setSessionType(sessionTypeParam);
+        if (selectedSlotIdsParam) {
+          // support comma-separated or single id
+          const ids = String(selectedSlotIdsParam).split(',').map(i => i.trim()).filter(Boolean);
+          setPendingSlotIds(ids);
+        }
+
+        if (!selectedDateParam && !selectedSlotIdsParam && !sessionTypeParam) {
+          const draft = localStorage.getItem('pendingBookingDraft');
+          if (draft) {
+            try {
+              const parsed = JSON.parse(draft);
+              if (parsed.selectedDate) setSelectedDate(new Date(parsed.selectedDate));
+              if (parsed.sessionType) setSessionType(parsed.sessionType);
+              if (parsed.selectedSlotIds) {
+                const ids = Array.isArray(parsed.selectedSlotIds) ? parsed.selectedSlotIds.map(String) : String(parsed.selectedSlotIds).split(',').map(i => i.trim()).filter(Boolean);
+                setPendingSlotIds(ids);
+              }
+            } catch (e) {
+              console.error('Failed to parse pending booking draft', e);
+            }
+          }
+        }
+
+        const cleanParams = new URLSearchParams(window.location.search);
+        cleanParams.delete('calendar_connected');
+        cleanParams.delete('selectedDate');
+        cleanParams.delete('selectedSlotId');
+        cleanParams.delete('selectedSlotIds');
+        cleanParams.delete('sessionType');
+        const newPath = window.location.pathname + (cleanParams.toString() ? `?${cleanParams.toString()}` : '');
+        window.history.replaceState({}, document.title, newPath);
+        if (userId) await fetchCalendarStatus(userId);
+      }
+
+      if (urlParams.get('calendar_error')) {
+        toastrError(`Calendar connection failed: ${urlParams.get('calendar_error')}`);
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search.replace(/([?&])calendar_error=[^&]*(&|$)/, '$1').replace(/\?$/, ''));
+      }
+    };
+
+    handleCalendarUrlParams();
+
     const fetchCoachData = async () => {
       if (!coachId) {
         toastrError("No coach selected");
@@ -43,7 +165,6 @@ const BookSessionPage = () => {
 
         const mentor = response;
 
-        // Handle skills - can be JSON string, array, or null
         let skillsText = '';
         if (mentor.skills) {
           try {
@@ -58,7 +179,6 @@ const BookSessionPage = () => {
           }
         }
 
-        // Transform API data to match component expectations
         const coachData = {
           id: mentor.user_id,
           name: mentor.name || mentor.username || 'Unknown',
@@ -82,7 +202,6 @@ const BookSessionPage = () => {
     fetchCoachData();
   }, [coachId, router]);
 
-  // Fetch all available slots to highlight dates in calendar
   useEffect(() => {
     const fetchAllAvailableSlots = async () => {
       if (!coachId) return;
@@ -100,47 +219,33 @@ const BookSessionPage = () => {
 
         const allSlots = Array.isArray(allSlotsResponse) ? allSlotsResponse : [];
 
-        console.log("All slots from API:", JSON.stringify(allSlots, null, 2));
-
-        // Extract unique dates from slots
-        // API now returns dates in YYYY-MM-DD format
         const uniqueDates = new Set();
         allSlots.forEach(slot => {
           if (slot.date) {
-            // API should return date as YYYY-MM-DD string
             let dateStr = '';
 
             if (typeof slot.date === 'string') {
-              // Extract YYYY-MM-DD from string (handle ISO format if any)
               dateStr = slot.date.split('T')[0].split(' ')[0];
             } else if (slot.date instanceof Date) {
-              // Fallback: format Date object (shouldn't happen with API fix)
               const year = slot.date.getFullYear();
               const month = String(slot.date.getMonth() + 1).padStart(2, '0');
               const day = String(slot.date.getDate()).padStart(2, '0');
               dateStr = `${year}-${month}-${day}`;
             }
 
-            // Validate and add date
             if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
               uniqueDates.add(dateStr);
-              console.log("Added date:", dateStr, "from slot id:", slot.id);
             } else {
               console.warn("Invalid date format:", slot.date, "from slot:", slot);
             }
           }
         });
 
-        console.log("Unique dates with slots:", Array.from(uniqueDates).sort());
-
-        // Convert to Date objects for react-datepicker (using local timezone)
         const datesArray = Array.from(uniqueDates).map(dateStr => {
           const [year, month, day] = dateStr.split('-').map(Number);
-          // Create date at noon local time to avoid timezone edge cases
           return new Date(year, month - 1, day, 12, 0, 0);
         });
 
-        console.log("Dates array for datepicker:", datesArray);
         setDatesWithSlots(datesArray);
       } catch (error) {
         console.error("Error fetching all available slots:", error);
@@ -150,18 +255,16 @@ const BookSessionPage = () => {
     fetchAllAvailableSlots();
   }, [coachId]);
 
-  // Fetch available slots when date is selected
   useEffect(() => {
     const fetchAvailableSlots = async () => {
       if (!selectedDate || !coachId) {
         setAvailableSlots([]);
-        setSelectedSlot(null);
+        setSelectedSlots([]);
         return;
       }
 
       setLoadingSlots(true);
       try {
-        // Format date as YYYY-MM-DD
         const formatDate = (date) => {
           const year = date.getFullYear();
           const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -170,15 +273,11 @@ const BookSessionPage = () => {
         };
 
         const dateString = formatDate(selectedDate);
-        console.log("Fetching slots for mentor:", coachId, "date:", dateString);
-
         const slotsResponse = await getSlotsByMentor(coachId, {
           date: dateString,
           is_booked: 0,
           is_active: 1
         });
-
-        console.log("Slots response:", slotsResponse);
 
         if (slotsResponse.error) {
           console.error("Error fetching slots:", slotsResponse.error);
@@ -187,23 +286,20 @@ const BookSessionPage = () => {
         }
 
         const slots = Array.isArray(slotsResponse) ? slotsResponse : [];
-        console.log("Parsed slots:", slots);
 
-        // Format slots to extract time and create time slot objects
         const formattedSlots = slots.map(slot => {
-          // Handle time format - could be "HH:MM:SS" or "HH:MM"
           let startTimeStr = '';
           let endTimeStr = '';
 
           if (slot.start_time) {
             startTimeStr = slot.start_time.includes(':')
-              ? slot.start_time.substring(0, 5) // Get HH:MM from "HH:MM:SS"
+              ? slot.start_time.substring(0, 5)
               : slot.start_time;
           }
 
           if (slot.end_time) {
             endTimeStr = slot.end_time.includes(':')
-              ? slot.end_time.substring(0, 5) // Get HH:MM from "HH:MM:SS"
+              ? slot.end_time.substring(0, 5)
               : slot.end_time;
           }
 
@@ -216,9 +312,8 @@ const BookSessionPage = () => {
           };
         });
 
-        console.log("Formatted slots:", formattedSlots);
         setAvailableSlots(formattedSlots);
-        setSelectedSlot(null);
+        setSelectedSlots([]); // reset selection on date change
       } catch (error) {
         console.error("Error fetching available slots:", error);
         setAvailableSlots([]);
@@ -229,6 +324,28 @@ const BookSessionPage = () => {
 
     fetchAvailableSlots();
   }, [selectedDate, coachId]);
+
+  useEffect(() => {
+    if (!pendingSlotIds || !availableSlots || availableSlots.length === 0) return;
+    const idsSet = new Set(pendingSlotIds.map(String));
+    const found = availableSlots.filter(s => idsSet.has(String(s.id)));
+    if (found.length > 0) {
+      setSelectedSlots(found);
+      setPendingSlotIds(null);
+      localStorage.removeItem('pendingBookingDraft');
+    }
+  }, [availableSlots, pendingSlotIds]);
+
+  const toggleSelectedSlot = (slot) => {
+    setSelectedSlots(prev => {
+      const exists = prev.find(s => String(s.id) === String(slot.id));
+      if (exists) {
+        return prev.filter(s => String(s.id) !== String(slot.id));
+      } else {
+        return [...prev, slot];
+      }
+    });
+  };
 
   const sessionTypes = [
     {
@@ -251,9 +368,20 @@ const BookSessionPage = () => {
     }
   ];
 
+  const calculateTotalHours = (slots) => {
+    return slots.reduce((acc, slot) => {
+      if (!slot.start_time || !slot.end_time) return acc;
+      const [startH, startM] = slot.start_time.split(':').map(Number);
+      const [endH, endM] = slot.end_time.split(':').map(Number);
+      const startDec = startH + startM / 60;
+      const endDec = endH + endM / 60;
+      return acc + (endDec - startDec);
+    }, 0);
+  };
+
   const handleBooking = async () => {
-    if (!selectedDate || !selectedSlot) {
-      toastrError("Please select both date and time slot");
+    if (!selectedDate || selectedSlots.length === 0) {
+      toastrError("Please select a date and at least one time slot");
       return;
     }
 
@@ -264,44 +392,65 @@ const BookSessionPage = () => {
       return;
     }
 
+    if (!calendarStatus.connected) {
+      toastrError("Please connect your Google Calendar to book a session");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Create booking
+      const perSlotRate = parseFloat(coach?.hourly_rate || 0) || 0;
+      const totalHours = calculateTotalHours(selectedSlots);
+      const amount = Math.round(perSlotRate * totalHours);
+
       const bookingData = {
         user_id: parseInt(userId),
         mentor_id: parseInt(coachId),
-        slot_id: selectedSlot.id,
-        notes: `Session type: ${sessionType}`
+        slot_ids: selectedSlots.map(s => s.id),
+        amount,
+        remark: `Booking ${selectedSlots.length} session(s) - ${sessionType}`
       };
 
-      const bookingResult = await bookSlot(bookingData);
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001';
+      const res = await fetch(`${API_BASE}/api/payment/payout`, {
+        method: "POST",
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookingData),
+      });
 
-      if (bookingResult.error) {
-        throw new Error(bookingResult.error || "Failed to create booking");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
       }
 
-      // Redirect to payment if payment URL is provided
-      if (bookingResult.payment && bookingResult.payment.payment_url) {
-        // Store booking info for after payment
+      const result = await res.json();
+      toastrSuccess(result.message || "Booking request created. Redirecting to payment...");
+
+      // If API returns a payment URL, redirect
+      const paymentUrl = result?.payment_url || result?.payment?.payment_url || result?.payment_url_redirect;
+      const bookingId = result?.booking?.id || result?.booking_id || result?.id;
+
+      if (paymentUrl) {
         localStorage.setItem("pendingBooking", JSON.stringify({
-          bookingId: bookingResult.booking.id,
-          orderId: bookingResult.payment.order_id
+          bookingId: bookingId || null,
+          orderId: result?.payment?.order_id || result?.order_id || null
         }));
-
-        toastrSuccess("Booking created! Redirecting to payment...");
-
-        // Redirect to payment
         setTimeout(() => {
-          window.location.href = bookingResult.payment.payment_url;
-        }, 1000);
+          window.location.href = paymentUrl;
+        }, 800);
+        return;
+      }
+
+      if (bookingId) {
+        router.push(`/dashboard/userdashboard/userpayment?bookingId=${bookingId}`);
       } else {
-        toastrSuccess("Booking created! Please complete payment.");
-        router.push(`/dashboard/userdashboard/userpayment?bookingId=${bookingResult.booking.id}`);
+        router.push("/dashboard/user");
       }
     } catch (err) {
       console.error("Booking error:", err);
-      toastrError(err.message || "Failed to book session. Please try again.");
+      toastrError(err.message || "Failed to create booking. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -322,12 +471,14 @@ const BookSessionPage = () => {
     );
   }
 
+  const perSlotRateDisplay = coach?.hourly_rate ? `₹${parseFloat(coach.hourly_rate).toLocaleString('en-IN')}` : '₹0';
+  const amountTotal = Math.round((parseFloat(coach?.hourly_rate || 0) || 0) * calculateTotalHours(selectedSlots));
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header />
 
       <main className="flex-grow container-professional py-8 md:py-10 lg:py-12 fade-in">
-        {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push("/dashboard/userdashboard/coachdiscovery")}
@@ -343,7 +494,6 @@ const BookSessionPage = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Coach Info */}
           <div className="lg:col-span-1">
             <div className="card spacing-generous">
               <div className="text-center mb-6">
@@ -376,7 +526,7 @@ const BookSessionPage = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Price(1hr):</span>
-                  <span className="font-bold text-[var(--primary)]">{coach.price}</span>
+                  <span className="font-bold text-[var(--primary)]">{perSlotRateDisplay}</span>
                 </div>
               </div>
 
@@ -398,36 +548,43 @@ const BookSessionPage = () => {
             </div>
           </div>
 
-          {/* Booking Form */}
           <div className="lg:col-span-2">
             <div className="card spacing-generous">
+              <div className="mb-6">
+                {calendarStatus.loading ? (
+                  <div className="p-4 flex items-center bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="spinner mr-3" style={{ width: 20, height: 20 }}></div>
+                    <div className="text-sm text-gray-700">Checking Google Calendar connection...</div>
+                  </div>
+                ) : calendarStatus.connected ? (
+                  <div className="p-4 flex items-center justify-between bg-green-50 border border-green-200 rounded-lg">
+                    <div>
+                      <div className="font-semibold text-green-900">Google Calendar Connected</div>
+                      <div className="text-sm text-green-700">{calendarStatus.email || ''}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start justify-between">
+                      <div className="mr-4">
+                        <div className="font-semibold text-yellow-900">Connect Google Calendar</div>
+                        <div className="text-sm text-yellow-700">You must connect your Google Calendar before booking to receive invites and meeting links.</div>
+                      </div>
+                      <div>
+                        <button
+                          onClick={handleConnectCalendar}
+                          className="btn btn-primary px-4 py-2"
+                        >
+                          Connect Calendar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Schedule Your Session</h2>
 
-              {/* Session Type */}
-              {/* <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  Session Type
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {sessionTypes.map((type) => (
-                    <div
-                      key={type.id}
-                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        sessionType === type.id
-                          ? 'border-[var(--primary)] bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => setSessionType(type.id)}
-                    >
-                      <h3 className="font-semibold text-gray-900 mb-1">{type.name}</h3>
-                      <p className="text-sm text-gray-600 mb-2">{type.duration}</p>
-                      <p className="text-lg font-bold text-[var(--primary)]">{type.price}</p>
-                    </div>
-                  ))}
-                </div>
-              </div> */}
-
-              {/* Date Selection */}
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   <CalendarDaysIcon className="w-4 h-4 inline mr-1" />
@@ -443,10 +600,7 @@ const BookSessionPage = () => {
                   highlightDates={datesWithSlots}
                   renderDayContents={(dayOfMonth, date) => {
                     if (!date) return dayOfMonth;
-                    // Format date as YYYY-MM-DD for comparison
                     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-
-                    // Compare with dates from API (stored as YYYY-MM-DD strings)
                     const hasSlot = datesWithSlots.some(d => {
                       const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                       return dStr === dateStr;
@@ -461,12 +615,11 @@ const BookSessionPage = () => {
                 />
               </div>
 
-              {/* Time Selection - Available Slots in One Line */}
               {selectedDate && (
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     <ClockIcon className="w-4 h-4 inline mr-1" />
-                    Select Time Slot {!selectedDate && <span className="text-gray-400 text-xs">(Select a date first)</span>}
+                    Select Time Slot(s)
                   </label>
                   {loadingSlots ? (
                     <div className="flex items-center justify-center py-8">
@@ -475,18 +628,29 @@ const BookSessionPage = () => {
                     </div>
                   ) : availableSlots.length > 0 ? (
                     <div className="flex flex-wrap gap-2 overflow-x-auto pb-2">
-                      {availableSlots.map((slot) => (
-                        <button
-                          key={slot.id}
-                          className={`px-4 py-3 text-sm rounded-lg border transition-all whitespace-nowrap flex-shrink-0 ${selectedSlot?.id === slot.id
-                            ? 'border-[var(--primary)] bg-blue-50 text-[var(--primary)] font-semibold'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
-                          onClick={() => setSelectedSlot(slot)}
-                        >
-                          {slot.start_time} - {slot.end_time}
-                        </button>
-                      ))}
+                      {availableSlots.map((slot) => {
+                        const isSelected = selectedSlots.some(s => String(s.id) === String(slot.id));
+                        return (
+                          <button
+                            key={slot.id}
+                            type="button"
+                            className={`px-4 py-3 text-sm rounded-lg border transition-all whitespace-nowrap flex-shrink-0 flex items-center gap-2 ${isSelected
+                              ? 'border-[var(--primary)] bg-blue-50 text-[var(--primary)] font-semibold'
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                            onClick={() => toggleSelectedSlot(slot)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              readOnly
+                              className="form-checkbox h-4 w-4"
+                              aria-hidden
+                            />
+                            <span>{slot.start_time} - {slot.end_time}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   ) : selectedDate ? (
                     <div className="p-6 text-center bg-gray-50 rounded-lg border border-gray-200">
@@ -501,29 +665,38 @@ const BookSessionPage = () => {
                 </div>
               )}
 
-              {/* Booking Summary */}
-              {selectedDate && selectedSlot && (
+              {selectedDate && selectedSlots.length > 0 && (
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                   <h3 className="font-semibold text-gray-900 mb-2">Booking Summary</h3>
                   <div className="space-y-1 text-sm">
                     <p><span className="text-gray-600">Coach:</span> {coach.name}</p>
-                    <p><span className="text-gray-600">Session:</span> {sessionTypes.find(t => t.id === sessionType)?.name}</p>
+                    <p><span className="text-gray-600">Session type:</span> {sessionTypes.find(t => t.id === sessionType)?.name}</p>
                     <p><span className="text-gray-600">Date:</span> {selectedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                    <p><span className="text-gray-600">Time:</span> {selectedSlot.start_time} - {selectedSlot.end_time}</p>
-                    <p><span className="text-gray-600">Duration:</span> {sessionTypes.find(t => t.id === sessionType)?.duration}</p>
+                    <div>
+                      <span className="text-gray-600">Time slots:</span>
+                      <ul className="ml-4 list-disc">
+                        {selectedSlots.map(s => (
+                          <li key={s.id} className="text-gray-800">{s.start_time} - {s.end_time}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <p className="font-semibold">
+                      <span className="text-gray-600">Hourly Rate:</span>
+                      <CurrencyRupeeIcon className="w-4 h-4 inline mx-1" />
+                      {perSlotRateDisplay}
+                    </p>
                     <p className="font-semibold">
                       <span className="text-gray-600">Total:</span>
                       <CurrencyRupeeIcon className="w-4 h-4 inline mx-1" />
-                      {sessionTypes.find(t => t.id === sessionType)?.price}
+                      {`₹${amountTotal.toLocaleString('en-IN')}`}
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Book Button */}
               <button
                 onClick={handleBooking}
-                disabled={!selectedDate || !selectedSlot || loading}
+                disabled={!selectedDate || selectedSlots.length === 0 || loading || calendarStatus.loading || !calendarStatus.connected}
                 className="btn btn-primary btn-lg w-full"
               >
                 {loading ? (
@@ -532,7 +705,7 @@ const BookSessionPage = () => {
                     Booking Session...
                   </>
                 ) : (
-                  'Book Session'
+                  `Book ${selectedSlots.length > 0 ? `${selectedSlots.length} Session${selectedSlots.length > 1 ? 's' : ''}` : 'Session'}`
                 )}
               </button>
             </div>

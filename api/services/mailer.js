@@ -59,4 +59,18 @@ async function sendOtpEmail(to, otp) {
   return info;
 }
 
-module.exports = { sendOtpEmail };
+async function sendEmail({ to, subject, html, text }) {
+  const transporter = await createTransporter();
+  const mailOptions = {
+    from: process.env.GMAIL_USER,
+    to,
+    subject,
+    text: text || '',
+    html,
+  };
+
+  const info = await transporter.sendMail(mailOptions);
+  return info;
+}
+
+module.exports = { sendOtpEmail, sendEmail };

@@ -79,19 +79,18 @@ export default function SetupProgress({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {tasks.map((task, index) => {
           const Icon = task.icon;
-          const isClickable = !allComplete || task.completed;
+          const isClickable =  !task.completed;
           
           return (
             <div
               key={task.id}
               onClick={() => isClickable && router.push(task.link)}
               className={`
-                relative p-6 rounded-xl border-2 transition-all duration-300 cursor-pointer
+                relative p-6 rounded-xl border-2 transition-all duration-300 
                 ${task.completed 
-                  ? 'bg-green-50 border-green-300 hover:border-green-400 hover:shadow-lg' 
-                  : 'bg-white border-gray-300 hover:border-blue-400 hover:shadow-md'
+                  ? 'bg-green-50 border-green-300 hover:border-green-400 hover:shadow-lg  cursor-normal' 
+                  : 'bg-white border-gray-300 hover:border-blue-400 hover:shadow-md cursor-pointer'
                 }
-                ${!isClickable ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
               {/* Task Number Badge */}
@@ -170,4 +169,7 @@ export default function SetupProgress({
     </div>
   );
 }
+
+// The component already accepts accountComplete prop and uses it correctly
+// Parent should pass accountComplete={isVPAValid(profile)} when calling this component
 
