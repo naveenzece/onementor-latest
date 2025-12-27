@@ -108,6 +108,10 @@ app.use("/api/mentor/calendar", mentorCalendarRoutes);
 const userCalendarRoutes = require("./routes/user/calendar");
 app.use("/api/user/calendar", userCalendarRoutes);
 
+// User sessions
+const userSessionRoutes = require("./routes/user/sessions");
+app.use("/api/user/sessions", userSessionRoutes);
+
 // Payment routes
 app.use("/api/payment", paymentRoutes);
 

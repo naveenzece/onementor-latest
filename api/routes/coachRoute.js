@@ -1,6 +1,6 @@
 const express = require("express");
 const checkAuth = require('../middleware/check-auth');
-const {fetchUser,createUser,editUser,deleteUser
+const { fetchUser, createUser, editUser, deleteUser
 } = require("../controller/coach");
 
 const router = express.Router();

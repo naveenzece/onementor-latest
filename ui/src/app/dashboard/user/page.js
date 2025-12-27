@@ -132,6 +132,12 @@ export default function UserDashboard() {
               icon={<CreditCardIcon className="w-8 h-8" />} 
               link="/dashboard/userdashboard/userpayment" 
             />
+              <Card 
+              title="Upcoming Event" 
+              description="Manage Your Upcoming and History"
+              icon={<UserIcon className="w-8 h-8" />} 
+              link="/dashboard/userdashboard/userschedule" 
+            />
           </div>
         </div>
 
