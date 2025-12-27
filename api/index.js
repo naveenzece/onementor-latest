@@ -30,20 +30,17 @@ const { swaggerUi, specs } = require('./config/swagger');
 
 const app = express();
 if (process.env.SSL === 'true') {
-  const fs = require('fs');
-  const https = require('https');
-
-  // Your existing routes here
-  app.get('/', (req, res) => res.send('Hello HTTPS!'));
+  app.get("/", (req, res) => {
+    res.send("HTTPS working");
+  });
 
   const sslOptions = {
-    key: fs.readFileSync('/etc/ssl/onementor/privkey.pem'),
-    cert: fs.readFileSync('/etc/ssl/onementor/fullchain.pem')
+    key: fs.readFileSync("/etc/letsencrypt/live/yourdomain.com/privkey.pem"),
+    cert: fs.readFileSync("/etc/letsencrypt/live/yourdomain.com/fullchain.pem"),
   };
 
-  // Start server on port 443 (HTTPS)
   https.createServer(sslOptions, app).listen(443, () => {
-    console.log('🚀 Server running on https://localhost');
+    console.log("🚀 HTTPS server running on port 443");
   });
 }
 
@@ -137,7 +134,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Health check
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'OneMentor API is running',
     version: '1.0.0',
     endpoints: {
@@ -154,14 +151,14 @@ app.get('/', (req, res) => {
 // Check session route
 app.get('/api/auth/check-session', (req, res) => {
   if (req.session.user) {
-    res.json({ 
-      authenticated: true, 
-      user: req.session.user 
+    res.json({
+      authenticated: true,
+      user: req.session.user
     });
   } else {
-    res.json({ 
+    res.json({
       authenticated: false,
-      message: "No active session" 
+      message: "No active session"
     });
   }
 });
