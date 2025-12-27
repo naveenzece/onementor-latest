@@ -11,7 +11,7 @@ export async function login(email, password) {
     });
     const data = await res.json();
     if (!res.ok) {
-      return { 
+      return {
         error: data.error || 'Login failed',
         requiresVerification: data.requiresVerification || false,
         email: data.email,
@@ -92,5 +92,23 @@ export async function checkSession() {
   } catch (err) {
     console.error('checkSession error', err);
     return { authenticated: false };
+  }
+}
+
+// Initiate Google Login
+export async function initiateGoogleLogin(role = 'user', intent = 'signup') {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/google/url?role=${role}&intent=${intent}`, {
+      method: 'GET',
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      return { error: 'Failed to get Google Auth URL' };
+    }
+  } catch (err) {
+    console.error('initiateGoogleLogin error', err);
+    return { error: 'Network error' };
   }
 }

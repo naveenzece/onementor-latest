@@ -3,11 +3,17 @@ const bcrypt = require('bcryptjs');
 
 // Create new user with password hash
 const createUser = async (data) => {
-  const { name, email, phone, password, role } = data;
-  const passwordHash = await bcrypt.hash(password, 10);
-  const query = "INSERT INTO users (name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?)";
-  const [result] = await db.query(query, [name, email, phone || null, passwordHash, role || 'user']);
-  return result;
+  try {
+    const { name, email, phone, password, role } = data;
+    const passwordHash = await bcrypt.hash(password, 10);
+    // Explicitly setting is_active=1 and is_verified=0 (defaults)
+    const query = "INSERT INTO users (name, email, phone, password_hash, role, is_active, is_verified) VALUES (?, ?, ?, ?, ?, 1, 0)";
+    const [result] = await db.query(query, [name, email, phone || null, passwordHash, role || 'user']);
+    return result;
+  } catch (err) {
+    console.error('createUser failed:', err);
+    throw err;
+  }
 };
 
 // Find user by email

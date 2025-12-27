@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
-import { login, sendOTP, verifyOTP } from "@/services/auth/auth";
+import { login, sendOTP, verifyOTP, initiateGoogleLogin } from "@/services/auth/auth";
 import Image from "next/image";
 import Loader from "@/components/ui/loader/loader";
 
@@ -167,6 +167,35 @@ export default function Login() {
     }
   }
 
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    const result = await initiateGoogleLogin('user', 'login'); // Intent is login 
+    // Actually, backend needs role if creating new user. 
+    // If logging in, we don't strictly need it if we look up by email, but passed role might be fallback?
+    // Let's pass 'user' as default or maybe nothing?
+    // My backend implementation uses role if available. 
+    // If I want to allow Mentors to login via Google on Login page without selecting role first...
+    // Maybe I should add a role selector on Login page too? 
+    // Or just pass 'user' and if they are a mentor in DB, backend logic should handle it?
+    // Backend logic: "Check if user exists... If not, create user with role".
+    // So if they exist, role param is ignored? 
+    // Current backend logic: `if (parsedState && parsedState.role) role = parsedState.role; ... if (!user) { ... role, ... }`
+    // So if user exists, it uses DB role. Correct.
+    // If user does NOT exist, it uses passed role. 
+    // So if a Mentor signs up via Login page (which connects to Google), they will be created as 'user' if I default to 'user'?
+    // This might be an issue.
+    // Ideally, Login page is for existing users. 
+    // If a new user comes to Login page and ignores Signup, they might get created as 'user'.
+    // I helps to add a small note or just accept it.
+    // Or I can add role toggle for Google Login? 
+    // For now, I'll default to 'user'. 
+
+    if (result && result.error) {
+      toastrError(result.error);
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen relative">
       <MainHeader />
@@ -235,8 +264,8 @@ export default function Login() {
                 type="button"
                 onClick={() => setLoginMethod('password')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${loginMethod === 'password'
-                    ? 'bg-[var(--primary)] text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-[var(--primary)] text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
               >
                 Password
@@ -245,8 +274,8 @@ export default function Login() {
                 type="button"
                 onClick={() => setLoginMethod('otp')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${loginMethod === 'otp' || loginMethod === 'otp-verify'
-                    ? 'bg-[var(--primary)] text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-[var(--primary)] text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
               >
                 OTP
@@ -387,6 +416,42 @@ export default function Login() {
                 </div>
               </form>
             )}
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary)] transition-all"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24">
+                <path
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  fill="#4285F4"
+                />
+                <path
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  fill="#34A853"
+                />
+                <path
+                  d="M5.84 14.12c-.22-.66-.35-1.36-.35-2.12s.13-1.46.35-2.12V7.04H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.96l2.66-2.84z"
+                  fill="#FBBC05"
+                />
+                <path
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.04l3.66 2.84c.87-2.6 3.3-4.5 6.16-4.5z"
+                  fill="#EA4335"
+                />
+              </svg>
+              <span>Google</span>
+            </button>
 
             <div className="mt-8 pt-6 border-t border-gray-200 text-center">
               <p className="text-sm text-gray-600">
