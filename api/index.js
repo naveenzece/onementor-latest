@@ -29,6 +29,23 @@ const paymentRoutes = require("./routes/payment");
 const { swaggerUi, specs } = require('./config/swagger');
 
 const app = express();
+if (process.env.SSL === 'true') {
+  const fs = require('fs');
+  const https = require('https');
+
+  // Your existing routes here
+  app.get('/', (req, res) => res.send('Hello HTTPS!'));
+
+  const sslOptions = {
+    key: fs.readFileSync('/etc/ssl/onementor/privkey.pem'),
+    cert: fs.readFileSync('/etc/ssl/onementor/fullchain.pem')
+  };
+
+  // Start server on port 443 (HTTPS)
+  https.createServer(sslOptions, app).listen(443, () => {
+    console.log('🚀 Server running on https://localhost');
+  });
+}
 
 // CORS setup for frontend
 app.use(cors({
