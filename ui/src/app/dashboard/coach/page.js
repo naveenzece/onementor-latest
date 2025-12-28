@@ -35,7 +35,8 @@ export default function CoachDashboard() {
   const [setupProgress, setSetupProgress] = useState({
     profileComplete: false,
     accountComplete: false,
-    slotComplete: false
+    slotComplete: false,
+    registrationFeeComplete: false
   });
 
   useEffect(() => {
@@ -65,7 +66,8 @@ export default function CoachDashboard() {
         setSetupProgress({
           profileComplete: false,
           accountComplete: false,
-          slotComplete: false
+          slotComplete: false,
+          registrationFeeComplete: false // Ensure false by default
         });
         setLoading(false);
         return;
@@ -106,14 +108,16 @@ export default function CoachDashboard() {
       setSetupProgress({
         profileComplete,
         accountComplete,
-        slotComplete
+        slotComplete,
+        registrationFeeComplete: false // Force false as requested
       });
     } catch (error) {
       console.error("Error fetching setup progress:", error);
       setSetupProgress({
         profileComplete: false,
         accountComplete: false,
-        slotComplete: false
+        slotComplete: false,
+        registrationFeeComplete: false // Ensure false by default
       });
     } finally {
       setLoading(false);
@@ -263,7 +267,11 @@ export default function CoachDashboard() {
     return name.substring(0, 2).toUpperCase();
   };
 
-  const allSetupComplete = setupProgress.profileComplete && setupProgress.accountComplete && setupProgress.slotComplete;
+  const allSetupComplete =
+    setupProgress.profileComplete &&
+    setupProgress.accountComplete &&
+    setupProgress.slotComplete &&
+    setupProgress.registrationFeeComplete;
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -323,6 +331,7 @@ export default function CoachDashboard() {
             profileComplete={setupProgress.profileComplete}
             accountComplete={setupProgress.accountComplete}
             slotComplete={setupProgress.slotComplete}
+            registrationFeeComplete={setupProgress.registrationFeeComplete}
           />
         )}
 
@@ -340,9 +349,8 @@ export default function CoachDashboard() {
               title="Manage Schedule"
               description="Set your availability and time slots"
               icon={<ClipboardDocumentListIcon className="w-8 h-8" />}
-              //link={allSetupComplete ? "/dashboard/coachdashboard/manageschedule" : undefined}
-              //disabled={!allSetupComplete}
-              link="/dashboard/coachdashboard/manageschedule"
+              link={allSetupComplete ? "/dashboard/coachdashboard/manageschedule" : undefined}
+              disabled={!allSetupComplete}
               disabledMessage="Complete setup tasks to unlock"
             />
             {/* <Card 

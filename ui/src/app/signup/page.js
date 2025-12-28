@@ -97,18 +97,9 @@ export default function Signup() {
     }
   };
 
-  const handleGoogleSignup = async () => {
-    if (!formData.role) {
-      toastrError("Please select a role first to continue with Google!");
-      return;
-    }
-    setLoading(true);
-    const roleParam = formData.role === 'coach' ? 'mentor' : formData.role;
-    const result = await initiateGoogleLogin(roleParam);
-    if (result && result.error) {
-      toastrError(result.error);
-      setLoading(false);
-    }
+  const handleGoogleSignup = () => {
+    // Navigate to role selection page instead of validating here
+    router.push("/auth/role-selection");
   };
 
   return (

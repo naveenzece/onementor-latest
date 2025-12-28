@@ -25,6 +25,9 @@ const slotManagementRoutes = require("./routes/coach/manageschedule");
 // Payment routes
 const paymentRoutes = require("./routes/payment");
 
+// Registration Fee routes
+const registrationFeeRoutes = require("./routes/registrationFeeRoutes");
+
 // Swagger
 const { swaggerUi, specs } = require('./config/swagger');
 
@@ -111,12 +114,15 @@ app.use("/api/user/calendar", userCalendarRoutes);
 // Payment routes
 app.use("/api/payment", paymentRoutes);
 
+// Registration Fee routes
+app.use("/api/registration-fee", registrationFeeRoutes);
+
 // Swagger docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Health check
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'OneMentor API is running',
     version: '1.0.0',
     endpoints: {
@@ -133,14 +139,14 @@ app.get('/', (req, res) => {
 // Check session route
 app.get('/api/auth/check-session', (req, res) => {
   if (req.session.user) {
-    res.json({ 
-      authenticated: true, 
-      user: req.session.user 
+    res.json({
+      authenticated: true,
+      user: req.session.user
     });
   } else {
-    res.json({ 
+    res.json({
       authenticated: false,
-      message: "No active session" 
+      message: "No active session"
     });
   }
 });

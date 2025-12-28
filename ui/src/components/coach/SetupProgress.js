@@ -4,14 +4,15 @@ import { CheckCircleIcon, XCircleIcon, LockClosedIcon } from "@heroicons/react/2
 import { CheckCircleIcon as CheckCircleIconSolid } from "@heroicons/react/24/solid";
 import { useRouter } from "next/navigation";
 
-export default function SetupProgress({ 
-  profileComplete = false, 
-  accountComplete = false, 
-  slotComplete = false 
+export default function SetupProgress({
+  profileComplete = false,
+  accountComplete = false,
+  slotComplete = false,
+  registrationFeeComplete = false
 }) {
   const router = useRouter();
-  const allComplete = profileComplete && accountComplete && slotComplete;
-  const progressPercentage = ((profileComplete ? 1 : 0) + (accountComplete ? 1 : 0) + (slotComplete ? 1 : 0)) * 33.33;
+  const allComplete = profileComplete && accountComplete && slotComplete && registrationFeeComplete;
+  const progressPercentage = ((profileComplete ? 1 : 0) + (accountComplete ? 1 : 0) + (slotComplete ? 1 : 0) + (registrationFeeComplete ? 1 : 0)) * 25;
 
   const tasks = [
     {
@@ -37,6 +38,14 @@ export default function SetupProgress({
       completed: slotComplete,
       link: '/dashboard/coachdashboard/slotsetup',
       icon: slotComplete ? CheckCircleIconSolid : CheckCircleIcon
+    },
+    {
+      id: 'registration-fee',
+      title: 'Registration Fees',
+      description: 'View or configure platform fees',
+      completed: registrationFeeComplete,
+      link: '/dashboard/coachdashboard/registration-fee',
+      icon: registrationFeeComplete ? CheckCircleIconSolid : CheckCircleIcon
     }
   ];
 
@@ -62,7 +71,7 @@ export default function SetupProgress({
 
         {/* Progress Bar */}
         <div className="w-full bg-gray-200 rounded-full h-4 mb-6 overflow-hidden">
-          <div 
+          <div
             className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all duration-500 ease-out rounded-full flex items-center justify-end pr-2"
             style={{ width: `${progressPercentage}%` }}
           >
@@ -76,32 +85,35 @@ export default function SetupProgress({
       </div>
 
       {/* Tasks List */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {tasks.map((task, index) => {
           const Icon = task.icon;
-          const isClickable =  !task.completed;
-          
+          const isClickable = !task.completed;
+
+          const isRegistrationFee = task.id === 'registration-fee';
+          const isCompleted = task.completed && !isRegistrationFee;
+
           return (
             <div
               key={task.id}
               onClick={() => isClickable && router.push(task.link)}
               className={`
-                relative p-6 rounded-xl border-2 transition-all duration-300 
-                ${task.completed 
-                  ? 'bg-green-50 border-green-300 hover:border-green-400 hover:shadow-lg  cursor-normal' 
+                  relative p-6 rounded-xl border-2 transition-all duration-300 
+                  ${isCompleted
+                  ? 'bg-green-50 border-green-300 hover:border-green-400 hover:shadow-lg  cursor-normal'
                   : 'bg-white border-gray-300 hover:border-blue-400 hover:shadow-md cursor-pointer'
                 }
-              `}
+                `}
             >
               {/* Task Number Badge */}
               <div className={`
                 absolute -top-3 -left-3 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg
-                ${task.completed 
-                  ? 'bg-green-500 text-white' 
+                ${isCompleted
+                  ? 'bg-green-500 text-white'
                   : 'bg-gray-300 text-gray-700'
                 }
               `}>
-                {task.completed ? (
+                {isCompleted ? (
                   <CheckCircleIconSolid className="w-6 h-6" />
                 ) : (
                   <span>{index + 1}</span>
@@ -109,7 +121,7 @@ export default function SetupProgress({
               </div>
 
               {/* Lock Icon for incomplete tasks when all not done */}
-              {!allComplete && !task.completed && (
+              {!allComplete && !isCompleted && !isRegistrationFee && (
                 <div className="absolute top-2 right-2">
                   <LockClosedIcon className="w-5 h-5 text-gray-400" />
                 </div>
@@ -119,11 +131,11 @@ export default function SetupProgress({
                 <div className="flex items-center space-x-3 mb-3">
                   <Icon className={`
                     w-8 h-8
-                    ${task.completed ? 'text-green-600' : 'text-gray-400'}
+                    ${isCompleted ? 'text-green-600' : 'text-gray-400'}
                   `} />
                   <h3 className={`
                     text-lg font-bold
-                    ${task.completed ? 'text-green-700' : 'text-gray-900'}
+                    ${isCompleted ? 'text-green-700' : 'text-gray-900'}
                   `}>
                     {task.title}
                   </h3>
@@ -131,14 +143,16 @@ export default function SetupProgress({
                 <p className="text-sm text-gray-600 mb-4">
                   {task.description}
                 </p>
-                {task.completed ? (
+                {isCompleted ? (
                   <div className="flex items-center space-x-2 text-green-600">
                     <CheckCircleIconSolid className="w-5 h-5" />
                     <span className="text-sm font-medium">Completed</span>
                   </div>
                 ) : (
                   <div className="flex items-center space-x-2 text-blue-600">
-                    <span className="text-sm font-medium">Click to complete</span>
+                    <span className="text-sm font-medium">
+                      {isRegistrationFee ? 'Click to view' : 'Click to complete'}
+                    </span>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
@@ -151,22 +165,24 @@ export default function SetupProgress({
       </div>
 
       {/* Info Message */}
-      {/* {!allComplete && (
-        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <div className="flex items-start space-x-3">
-            <LockClosedIcon className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-amber-900 mb-1">
-                Complete all setup tasks to access Manage Schedule
-              </p>
-              <p className="text-xs text-amber-700">
-                You need to finish Profile Setup, Account Setup, and Slot Setup before managing your schedule.
-              </p>
+      {
+        !allComplete && (
+          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start space-x-3">
+              <LockClosedIcon className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-900 mb-1">
+                  Complete all setup tasks to access Manage Schedule
+                </p>
+                <p className="text-xs text-amber-700">
+                  You need to finish Profile Setup, Account Setup, and Slot Setup before managing your schedule.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      )} */}
-    </div>
+        )
+      }
+    </div >
   );
 }
 
