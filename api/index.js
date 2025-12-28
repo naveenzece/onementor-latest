@@ -28,6 +28,9 @@ const slotManagementRoutes = require("./routes/coach/manageschedule");
 // Payment routes
 const paymentRoutes = require("./routes/payment");
 
+// Registration Fee routes
+const registrationFeeRoutes = require("./routes/registrationFeeRoutes");
+
 // Swagger
 const { swaggerUi, specs } = require('./config/swagger');
 
@@ -131,6 +134,9 @@ app.use("/api/user/sessions", userSessionRoutes);
 
 // Payment routes
 app.use("/api/payment", paymentRoutes);
+
+// Registration Fee routes
+app.use("/api/registration-fee", registrationFeeRoutes);
 
 // Swagger docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
