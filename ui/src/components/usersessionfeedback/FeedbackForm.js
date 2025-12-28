@@ -1,17 +1,15 @@
 "use client";
 import { useState } from "react";
 
+import { submitFeedback } from "@/services/reports/reports";
+
 export default function FeedbackForm({ bookingId, userId, coachId }) {
   const [rating, setRating] = useState(5);
   const [comments, setComments] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async () => {
-    await fetch("http://localhost:8001/api/reports", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bookingId, userId, coachId, rating, comments })
-    });
+    await submitFeedback({ bookingId, userId, coachId, rating, comments });
     setSubmitted(true);
   };
 
@@ -22,7 +20,7 @@ export default function FeedbackForm({ bookingId, userId, coachId }) {
       <h2 className="text-lg font-bold mb-2">Leave Feedback</h2>
       <label className="block mb-2">Rating:
         <select value={rating} onChange={(e) => setRating(e.target.value)} className="ml-2 border p-1">
-          {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+          {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
         </select>
       </label>
       <textarea

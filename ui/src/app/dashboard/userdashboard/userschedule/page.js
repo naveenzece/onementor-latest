@@ -11,6 +11,7 @@ import {
 } from "@heroicons/react/24/outline";
 import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
+import { getUserUpcomingSessions, getUserSessionHistory } from "@/services/booking/booking";
 
 const UserSchedule = () => {
   const [activeTab, setActiveTab] = useState("upcoming");
@@ -23,30 +24,29 @@ const UserSchedule = () => {
     fetchUserSessions();
   }, []);
 
+
+
   const fetchUserSessions = async () => {
     try {
       setLoading(true);
-      const userId = localStorage.getItem("userId") || "5";
-      const token = localStorage.getItem("token");
+      const userId = localStorage.getItem("userId");
 
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers.Authorization = `Bearer ${token}`;
+      if (!userId) {
+        setError("User not found");
+        setLoading(false);
+        return;
+      }
 
-      const baseUrl =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
-
-      const [upcomingRes, historyRes] = await Promise.all([
-        fetch(`${baseUrl}/api/user/sessions/upcoming/${userId}`, { headers }),
-        fetch(`${baseUrl}/api/user/sessions/history/${userId}`, { headers })
+      const [upcomingData, historyData] = await Promise.all([
+        getUserUpcomingSessions(userId),
+        getUserSessionHistory(userId)
       ]);
 
-      if (upcomingRes.ok) {
-        const upcomingData = await upcomingRes.json();
+      if (upcomingData && !upcomingData.error) {
         setUpcomingSessions(filterUpcoming(upcomingData.sessions || []));
       }
 
-      if (historyRes.ok) {
-        const historyData = await historyRes.json();
+      if (historyData && !historyData.error) {
         setHistorySessions(historyData.sessions || []);
       }
     } catch (err) {

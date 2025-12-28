@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { toastrError } from "@/components/ui/toaster/toaster";
 
+import { askAI } from "@/services/interaction/interaction";
+
 export default function QuestionInput({ addMessage, userId }) {
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,19 +24,8 @@ export default function QuestionInput({ addMessage, userId }) {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8001/api/interact/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          user_id: userId,
-          question: question,
-          interaction_type: 'ai_chat'
-        }),
-      });
+      const data = await askAI(question, userId);
 
-      const data = await res.json();
-      
       if (data.error) {
         toastrError(data.error);
         addMessage({ sender: "AI", message: "⚠️ Failed to get AI response. Please try again." });

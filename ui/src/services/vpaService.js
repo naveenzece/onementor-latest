@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8001";
+import { API_URL } from "./apiendpoints";
 
 export const saveVPA = async (payload) => {
   // Read auth token from common localStorage keys used across the app
@@ -8,7 +8,7 @@ export const saveVPA = async (payload) => {
     localStorage.getItem("authToken") ||
     "";
 
-  const url = `${API_BASE.replace(/\/+$/, '')}/api/mentor/profile/vpa`;
+  const url = `${API_URL}mentor/profile/vpa`;
 
   const res = await fetch(url, {
     method: "POST",

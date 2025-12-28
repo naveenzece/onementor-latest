@@ -6,6 +6,10 @@ import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { ArrowLeft, Calendar, Clock, User, ExternalLink } from "lucide-react";
 
+import { getSlotsByMentor } from "@/services/mentor/mentor";
+
+// ...
+
 export default function AllSessionsPage() {
     const router = useRouter();
     const [upcomingSessions, setUpcomingSessions] = useState([]);
@@ -23,14 +27,9 @@ export default function AllSessionsPage() {
                 return;
             }
 
-            const res = await fetch(
-                `http://localhost:8001/api/mentor/slots/mentor/${userId}`,
-                { credentials: "include" }
-            );
+            const data = await getSlotsByMentor(userId);
 
-            if (!res.ok) throw new Error("Failed to fetch sessions");
-
-            const data = await res.json();
+            if (data.error) throw new Error(data.error || "Failed to fetch sessions");
 
             // Filter for booked slots that are in the future
             const now = new Date();

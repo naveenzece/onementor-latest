@@ -1,17 +1,17 @@
 "use client";
 import { useState } from "react";
 
+import { addProgress } from "@/services/progress/progress";
+
 export default function ProgressUpdate({ userId, bookingId }) {
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
 
   const handleSave = async () => {
-    await fetch("http://localhost:8001/api/progress", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, bookingId, progressNotes: notes })
-    });
-    setSaved(true);
+    const res = await addProgress({ userId, bookingId, progressNotes: notes });
+    if (!res.error) {
+      setSaved(true);
+    }
   };
 
   if (saved) return <p className="text-green-600">Progress updated!</p>;

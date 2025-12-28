@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { toastrSuccess, toastrError } from '../../../../components/ui/toaster/toaster';
 import Loader from '../../../../components/ui/loader/loader';
 
+import { logout } from "@/services/auth/auth";
+
 export default function LogoutButton() {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
@@ -14,27 +16,7 @@ export default function LogoutButton() {
     setLoading(true);
     setShowModal(false);
     try {
-      const res = await fetch('http://localhost:8001/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      const text = await res.text();
-      let data;
-
-      try {
-        data = JSON.parse(text);
-      } catch (err) {
-        console.error('Failed to parse JSON. Response:', text);
-        setLoading(false);
-        return toastrError('Server returned invalid response');
-      }
-
-      if (!res.ok) {
-        console.error('Logout error:', data);
-        setLoading(false);
-        return toastrError(data.error || 'Logout failed');
-      }
+      await logout();
 
       localStorage.removeItem('userId');
       localStorage.removeItem('userRole');

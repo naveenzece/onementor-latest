@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001';
+import { API_URL } from "../apiendpoints";
 
 /**
  * Get Google Calendar OAuth authorization URL
@@ -7,7 +7,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001';
  */
 export async function getCalendarAuthUrl(userId) {
   try {
-    const res = await fetch(`${API_BASE}/api/mentor/calendar/auth-url?user_id=${userId}`, {
+    const res = await fetch(`${API_URL}mentor/calendar/auth-url?user_id=${userId}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -29,7 +29,7 @@ export async function getCalendarAuthUrl(userId) {
  */
 export async function getCalendarStatus(userId) {
   try {
-    const res = await fetch(`${API_BASE}/api/mentor/calendar/status?user_id=${userId}`, {
+    const res = await fetch(`${API_URL}mentor/calendar/status?user_id=${userId}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -52,7 +52,7 @@ export async function getCalendarStatus(userId) {
  */
 export async function disconnectCalendar(userId) {
   try {
-    const res = await fetch(`${API_BASE}/api/mentor/calendar/disconnect`, {
+    const res = await fetch(`${API_URL}mentor/calendar/disconnect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

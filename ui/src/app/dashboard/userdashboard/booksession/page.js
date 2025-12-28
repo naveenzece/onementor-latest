@@ -8,6 +8,7 @@ import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 import { ArrowLeftIcon, CalendarDaysIcon, ClockIcon, CurrencyRupeeIcon } from "@heroicons/react/24/outline";
 import { getMentorProfile, getSlotsByMentor } from "@/services/mentor/mentor";
 import { getCalendarStatus, getCalendarAuthUrl } from "@/services/calendar/userCalendar";
+import { createBooking } from "@/services/payment/payment";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -412,20 +413,11 @@ const BookSessionPage = () => {
         remark: `Booking ${selectedSlots.length} session(s) - ${sessionType}`
       };
 
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001';
-      const res = await fetch(`${API_BASE}/api/payment/payout`, {
-        method: "POST",
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bookingData),
-      });
+      const result = await createBooking(bookingData);
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+      if (result.error) {
+        throw new Error(result.error);
       }
-
-      const result = await res.json();
       toastrSuccess(result.message || "Booking request created. Redirecting to payment...");
 
       // If API returns a payment URL, redirect

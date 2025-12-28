@@ -6,6 +6,10 @@ import CoachCard from "@/components/userbooksession/coachcard";
 import SlotSelector from "@/components/userbooksession/SlotSelector";
 import Confirmation from "@/components/userbooksession/confirmation";
 
+import { discoverMentors } from "@/services/discovery/discovery";
+import { getSlotsByMentor } from "@/services/mentor/mentor";
+import { bookSlot } from "@/services/booking/booking";
+
 export default function BookSession() {
   const [step, setStep] = useState(1);
   const [coaches, setCoaches] = useState([]);
@@ -39,9 +43,9 @@ export default function BookSession() {
   // Fetch all coaches
   useEffect(() => {
     setLoading(true);
-    fetch("http://localhost:8001/api/coachprofile")
-      .then((res) => res.json())
+    discoverMentors()
       .then((data) => {
+        if (data.error) throw new Error(data.error);
         if (Array.isArray(data)) setCoaches(data);
         else if (data && Array.isArray(data.rows)) setCoaches(data.rows);
         else setCoaches([]);
@@ -54,9 +58,11 @@ export default function BookSession() {
   useEffect(() => {
     if (selectedCoach) {
       setLoading(true);
-      fetch(`http://localhost:8001/api/manageschedules/${selectedCoach.id}`)
-        .then((res) => res.json())
-        .then((data) => setSlots(data))
+      getSlotsByMentor(selectedCoach.id)
+        .then((data) => {
+          if (data.error) throw new Error(data.error);
+          setSlots(data);
+        })
         .catch(() => setError("Failed to load slots."))
         .finally(() => setLoading(false));
     }
@@ -68,16 +74,11 @@ export default function BookSession() {
     if (!userId) return setError("Login required to book session.");
 
     setLoading(true);
-    fetch("http://localhost:8001/api/bookings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        coachId: selectedCoach.id,
-        slotId: selectedSlot.id,
-        userId,
-      }),
+    bookSlot({
+      coachId: selectedCoach.id,
+      slotId: selectedSlot.id,
+      userId,
     })
-      .then((res) => res.json())
       .then((data) => {
         if (data.error) setError(data.error);
         else setSuccess(true);

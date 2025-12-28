@@ -1,9 +1,9 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001';
+import { API_URL } from "../apiendpoints";
 
 // Verify payment
 export async function verifyPayment(orderId) {
   try {
-    const res = await fetch(`${API_BASE}/api/payment/verify/${orderId}`, {
+    const res = await fetch(`${API_URL}payment/verify/${orderId}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -21,7 +21,7 @@ export async function verifyPayment(orderId) {
 // Get payment by booking ID
 export async function getPaymentByBooking(bookingId) {
   try {
-    const res = await fetch(`${API_BASE}/api/payment/booking/${bookingId}`, {
+    const res = await fetch(`${API_URL}payment/booking/${bookingId}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -33,6 +33,65 @@ export async function getPaymentByBooking(bookingId) {
   } catch (err) {
     console.error('getPaymentByBooking error', err);
     return { error: 'Network error' };
+  }
+}
+
+// Create booking and payout order
+export async function createBooking(bookingData) {
+  try {
+    const res = await fetch(`${API_URL}payment/payout`, {
+      method: "POST",
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bookingData),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: data.error || `HTTP error! status: ${res.status}`, ...data };
+    }
+    return data;
+  } catch (err) {
+    console.error("createBooking error:", err);
+    return { error: err.message || "Network error" };
+  }
+}
+
+// Create payment session
+export async function createPaymentSession(bookingId) {
+  try {
+    const res = await fetch(`${API_URL}payment/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify({ booking_id: bookingId }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: data.error, alreadyPaid: data.error === 'Booking is already paid', ...data };
+    }
+    return data;
+  } catch (err) {
+    console.error("Error creating payment session:", err);
+    return { error: "Network error" };
+  }
+}
+
+// Trigger Payment Webhook (Test Mode)
+export async function triggerPaymentWebhook(payload) {
+  try {
+    const res = await fetch(`${API_URL}payment/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    return { success: res.ok && data.success, ...data, isOk: res.ok };
+  } catch (err) {
+    console.error("Payment test error:", err);
+    return { error: "Network error", isOk: false };
   }
 }
 

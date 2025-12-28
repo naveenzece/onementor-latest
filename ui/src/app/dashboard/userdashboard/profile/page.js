@@ -8,7 +8,7 @@ import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import { getUserProfile } from "@/services/user/user";
+import { getUserProfile, createUserProfile } from "@/services/user/user";
 
 export default function ProfileSetup() {
   const [skills, setSkills] = useState([]);
@@ -105,21 +105,14 @@ export default function ProfileSetup() {
 
     setLoading(true);
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001';
-      const res = await fetch(`${API_BASE}/api/profile`, {
-        method: "POST",
-        credentials: 'include', // Include cookies for session
-        body: formData,
-      });
+      const res = await createUserProfile(formData);
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+      if (res.error) {
+        throw new Error(res.error);
       }
 
-      const result = await res.json();
-      toastrSuccess(result.message || "Profile submitted successfully!");
-      console.log("Profile submission response:", result);
+      toastrSuccess(res.message || "Profile submitted successfully!");
+      console.log("Profile submission response:", res);
 
       setTimeout(() => {
         router.push("/dashboard/user");

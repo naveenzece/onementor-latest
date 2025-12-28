@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
+import { getSlotsByMentor, createSlot, updateSlot, deleteSlot } from "@/services/mentor/mentor";
 import CalendarSlots from "@/components/coach/manageschedule/CalendarSlots";
 import SlotModal from "@/components/coach/manageschedule/SlotModal";
 import ViewSlotModal from "@/components/coach/manageschedule/ViewSlotModal";
@@ -17,7 +18,7 @@ const SchedulePage = () => {
   const [userEmail, setUserEmail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
   // Modal state
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -41,29 +42,27 @@ const SchedulePage = () => {
   }, []);
 
   // Fetch slots for this mentor
-    const fetchSlots = async () => {
-      if (!coachId) return;
+  const fetchSlots = async () => {
+    if (!coachId) return;
     setIsRefreshing(true);
-      try {
-        const res = await fetch(
-        `http://localhost:8001/api/mentor/slots/mentor/${coachId}`,
-        { credentials: "include" }
-        );
-      if (!res.ok) throw new Error("Failed to fetch slots");
-        const data = await res.json();
+    try {
+      const data = await getSlotsByMentor(coachId);
+
+      if (data.error) throw new Error(data.error);
+
       setSlots(data || []);
-      } catch (err) {
+    } catch (err) {
       console.error("Error fetching slots:", err);
       toastrError("Failed to load slots. Please refresh the page.");
     } finally {
       setLoading(false);
       setIsRefreshing(false);
-      }
-    };
+    }
+  };
 
   useEffect(() => {
     if (coachId) {
-    fetchSlots();
+      fetchSlots();
     }
   }, [coachId]);
 
@@ -93,43 +92,31 @@ const SchedulePage = () => {
   // Handle save slot (add or update)
   const handleSaveSlot = async (slotData) => {
     if (!coachId) return;
-    
+
     try {
       if (isEditing && slotData.id) {
         // Update existing slot
-        const res = await fetch(`http://localhost:8001/api/mentor/slots/${slotData.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            date: slotData.date,
-            start_time: slotData.start_time,
-            end_time: slotData.end_time,
-          }),
+        const res = await updateSlot(slotData.id, {
+          date: slotData.date,
+          start_time: slotData.start_time,
+          end_time: slotData.end_time,
         });
-        
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || "Failed to update slot");
+
+        if (res.error) {
+          throw new Error(res.error || "Failed to update slot");
         }
 
         await fetchSlots();
         toastrSuccess("Slot updated successfully! 🎉");
       } else {
         // Create new slot
-        const res = await fetch("http://localhost:8001/api/mentor/slots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            ...slotData,
-            mentor_id: coachId,
-          }),
-      });
-        
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || "Failed to create slot");
+        const res = await createSlot({
+          ...slotData,
+          mentor_id: coachId,
+        });
+
+        if (res.error) {
+          throw new Error(res.error || "Failed to create slot");
         }
 
         await fetchSlots();
@@ -159,14 +146,10 @@ const SchedulePage = () => {
   // Delete slot
   const handleDeleteSlot = async (id) => {
     try {
-      const res = await fetch(`http://localhost:8001/api/mentor/slots/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Failed to delete slot");
+      const res = await deleteSlot(id);
+
+      if (res.error) {
+        throw new Error(res.error || "Failed to delete slot");
       }
 
       // Refresh slots instead of filtering to get fresh data
@@ -231,13 +214,13 @@ const SchedulePage = () => {
       <main className="flex-grow w-full container-professional py-12 md:py-16 lg:py-20 fade-in">
         {/* Header Section */}
         <div className="mb-8">
-        <button
-          onClick={handleBack}
+          <button
+            onClick={handleBack}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6 transition-colors group"
-        >
+          >
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             <span className="font-medium">Back to Dashboard</span>
-        </button>
+          </button>
 
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
@@ -245,8 +228,8 @@ const SchedulePage = () => {
                 <div className="p-2 bg-blue-100 rounded-xl">
                   <Calendar className="w-8 h-8 text-blue-600" />
                 </div>
-          Manage Your Availability
-        </h1>
+                Manage Your Availability
+              </h1>
               <p className="text-gray-600">
                 Welcome back, <span className="font-semibold text-gray-800">{userEmail}</span>
               </p>
@@ -296,12 +279,12 @@ const SchedulePage = () => {
 
         {/* Main Content - Calendar Only */}
         <div className="w-full">
-          <CalendarSlots 
-            slots={slots} 
+          <CalendarSlots
+            slots={slots}
             onSelectSlot={handleSelectSlot}
             onSelectDate={handleSelectDate}
           />
-      </div>
+        </div>
 
         {/* View Slot Modal */}
         <ViewSlotModal

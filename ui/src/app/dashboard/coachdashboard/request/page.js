@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 import RequestCard from "@/components/coach/request/RequestCard";
 
+import { getMentorRequests, updateBookingStatus } from "@/services/mentor/mentor";
+
 const RequestsPage = () => {
   const router = useRouter(); // ✅ initialize router
   const [requests, setRequests] = useState([]);
@@ -27,9 +29,10 @@ const RequestsPage = () => {
     const fetchRequests = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://localhost:8001/api/requests/${coachId}`);
-        if (!res.ok) throw new Error("Failed to fetch requests");
-        const data = await res.json();
+        const data = await getMentorRequests(coachId);
+
+        if (data.error) throw new Error(data.error);
+
         setRequests(data);
       } catch (err) {
         console.error("Error fetching requests:", err);
@@ -45,13 +48,11 @@ const RequestsPage = () => {
   // Update request status (approve/reject)
   const handleAction = async (id, action) => {
     try {
-      const res = await fetch(`http://localhost:8001/api/bookings/${id}/status`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: action }),
-      });
+      if (!coachId) return; // Need coachId for updateBookingStatus signature
 
-      if (!res.ok) throw new Error("Failed to update status");
+      const res = await updateBookingStatus(id, coachId, action);
+
+      if (res.error) throw new Error(res.error || "Failed to update status");
 
       // Update local state optimistically
       setRequests((prev) =>

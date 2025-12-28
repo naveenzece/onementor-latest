@@ -1,9 +1,9 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001';
+import { API_URL } from "../apiendpoints";
 
 // Login with email and password
 export async function login(email, password) {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
+    const res = await fetch(`${API_URL}auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -28,7 +28,7 @@ export async function login(email, password) {
 // Send OTP for email verification
 export async function sendOTP(email) {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
+    const res = await fetch(`${API_URL}auth/send-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -48,7 +48,7 @@ export async function sendOTP(email) {
 // Verify OTP
 export async function verifyOTP(email, otp) {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
+    const res = await fetch(`${API_URL}auth/verify-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -68,7 +68,7 @@ export async function verifyOTP(email, otp) {
 // Logout
 export async function logout() {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/logout`, {
+    const res = await fetch(`${API_URL}auth/logout`, {
       method: 'POST',
       credentials: 'include',
     });
@@ -83,7 +83,7 @@ export async function logout() {
 // Check session
 export async function checkSession() {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/check-session`, {
+    const res = await fetch(`${API_URL}auth/check-session`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -98,7 +98,7 @@ export async function checkSession() {
 // Initiate Google Login
 export async function initiateGoogleLogin(role = 'user', intent = 'signup') {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/google/url?role=${role}&intent=${intent}`, {
+    const res = await fetch(`${API_URL}auth/google/url?role=${role}&intent=${intent}`, {
       method: 'GET',
     });
     const data = await res.json();

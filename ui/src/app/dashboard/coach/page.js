@@ -16,7 +16,7 @@ import { Clock, CheckCircle, XCircle, ExternalLink } from "lucide-react";
 import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { useRouter } from "next/navigation";
-import { getMentorProfile } from "@/services/mentor/mentor";
+import { getMentorProfile, getSlotsByMentor } from "@/services/mentor/mentor";
 import { isVPAValid } from "@/services/profileService";
 
 export default function CoachDashboard() {
@@ -125,14 +125,10 @@ export default function CoachDashboard() {
       const userId = localStorage.getItem("userId");
       if (!userId) return;
 
-      const res = await fetch(
-        `http://localhost:8001/api/mentor/slots/mentor/${userId}`,
-        { credentials: "include" }
-      );
+      const data = await getSlotsByMentor(userId);
 
-      if (!res.ok) throw new Error("Failed to fetch slots");
+      if (data.error) throw new Error(data.error);
 
-      const data = await res.json();
       setSlots(data || []);
 
       // Calculate current month stats
@@ -187,14 +183,9 @@ export default function CoachDashboard() {
       const userId = localStorage.getItem("userId");
       if (!userId) return;
 
-      const res = await fetch(
-        `http://localhost:8001/api/mentor/slots/mentor/${userId}`,
-        { credentials: "include" }
-      );
+      const data = await getSlotsByMentor(userId);
 
-      if (!res.ok) throw new Error("Failed to fetch sessions");
-
-      const data = await res.json();
+      if (data.error) throw new Error(data.error);
 
       // Filter for booked slots that are in the future
       const now = new Date();

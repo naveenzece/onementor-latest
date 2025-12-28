@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import QuestionInput from "./questioninput";
 
+import { getAIHistory } from "@/services/interaction/interaction";
+
 export default function ChatBox({ userId }) {
   const [messages, setMessages] = useState([]);
 
@@ -12,18 +14,14 @@ export default function ChatBox({ userId }) {
     if (userId) {
       const loadHistory = async () => {
         try {
-          const res = await fetch(`http://localhost:8001/api/interact/history/${userId}?limit=20`, {
-            credentials: 'include'
-          });
-          if (res.ok) {
-            const history = await res.json();
-            if (history && history.length > 0) {
-              const formattedMessages = history.reverse().flatMap(item => [
-                { sender: "You", message: item.question },
-                { sender: "AI", message: item.response || "No response available" }
-              ]);
-              setMessages(formattedMessages);
-            }
+          const history = await getAIHistory(userId);
+
+          if (history && !history.error && Array.isArray(history) && history.length > 0) {
+            const formattedMessages = history.reverse().flatMap(item => [
+              { sender: "You", message: item.question },
+              { sender: "AI", message: item.response || "No response available" }
+            ]);
+            setMessages(formattedMessages);
           }
         } catch (err) {
           console.error("Error loading chat history:", err);
@@ -48,11 +46,10 @@ export default function ChatBox({ userId }) {
               className={`flex ${m.sender === "You" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[80%] rounded-lg p-3 ${
-                  m.sender === "You"
+                className={`max-w-[80%] rounded-lg p-3 ${m.sender === "You"
                     ? "bg-blue-500 text-white"
                     : "bg-gray-100 text-gray-800"
-                }`}
+                  }`}
               >
                 <p className="text-xs font-semibold mb-1 opacity-80">{m.sender}</p>
                 <p className="text-sm whitespace-pre-wrap">{m.message}</p>

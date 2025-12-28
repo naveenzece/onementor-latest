@@ -1,26 +1,26 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001';
+import { API_URL } from "../apiendpoints";
 
 // Create/Update mentor profile
 // Accepts either FormData (for profile with resume) or plain object (for JSON requests like hourly_rate)
 export async function createMentorProfile(data) {
   try {
     const isFormData = data instanceof FormData;
-    
+
     const options = {
       method: 'POST',
       credentials: 'include',
     };
-    
+
     if (isFormData) {
       options.body = data;
     } else {
       options.headers = { 'Content-Type': 'application/json' };
       options.body = JSON.stringify(data);
     }
-    
-    const res = await fetch(`${API_BASE}/api/mentor/profile`, options);
+
+    const res = await fetch(`${API_URL}mentor/profile`, options);
     const responseData = await res.json();
-    
+
     if (!res.ok) {
       return { error: responseData.error || 'Failed to save mentor profile' };
     }
@@ -34,7 +34,7 @@ export async function createMentorProfile(data) {
 // Get mentor profile
 export async function getMentorProfile(userId) {
   try {
-    const res = await fetch(`${API_BASE}/api/mentor/profile/${userId}`, {
+    const res = await fetch(`${API_URL}mentor/profile/${userId}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -53,7 +53,7 @@ export async function getMentorProfile(userId) {
 export async function listMentors(filters = {}) {
   try {
     const queryParams = new URLSearchParams(filters);
-    const res = await fetch(`${API_BASE}/api/mentor/profile?${queryParams}`, {
+    const res = await fetch(`${API_URL}mentor/profile?${queryParams}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -71,7 +71,7 @@ export async function listMentors(filters = {}) {
 // Create slot
 export async function createSlot(slotData) {
   try {
-    const res = await fetch(`${API_BASE}/api/mentor/slots`, {
+    const res = await fetch(`${API_URL}mentor/slots`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -98,8 +98,8 @@ export async function getSlotsByMentor(mentorId, filters = {}) {
         queryParams.append(key, String(filters[key]));
       }
     });
-    
-    const url = `${API_BASE}/api/mentor/slots/mentor/${mentorId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+
+    const url = `${API_URL}mentor/slots/mentor/${mentorId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     const res = await fetch(url, {
       method: 'GET',
       credentials: 'include',
@@ -118,7 +118,7 @@ export async function getSlotsByMentor(mentorId, filters = {}) {
 // Update slot
 export async function updateSlot(slotId, slotData) {
   try {
-    const res = await fetch(`${API_BASE}/api/mentor/slots/${slotId}`, {
+    const res = await fetch(`${API_URL}mentor/slots/${slotId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -138,7 +138,7 @@ export async function updateSlot(slotId, slotData) {
 // Delete slot
 export async function deleteSlot(slotId) {
   try {
-    const res = await fetch(`${API_BASE}/api/mentor/slots/${slotId}`, {
+    const res = await fetch(`${API_URL}mentor/slots/${slotId}`, {
       method: 'DELETE',
       credentials: 'include',
     });
@@ -156,9 +156,9 @@ export async function deleteSlot(slotId) {
 // Get mentor booking requests
 export async function getMentorRequests(mentorId, status = null) {
   try {
-    const url = status 
-      ? `${API_BASE}/api/mentor/requests/${mentorId}?status=${status}`
-      : `${API_BASE}/api/mentor/requests/${mentorId}`;
+    const url = status
+      ? `${API_URL}mentor/requests/${mentorId}?status=${status}`
+      : `${API_URL}mentor/requests/${mentorId}`;
     const res = await fetch(url, {
       method: 'GET',
       credentials: 'include',
@@ -177,7 +177,7 @@ export async function getMentorRequests(mentorId, status = null) {
 // Update booking status (accept/reject)
 export async function updateBookingStatus(bookingId, mentorId, status, meetingLink = null) {
   try {
-    const res = await fetch(`${API_BASE}/api/mentor/requests/${bookingId}?mentor_id=${mentorId}`, {
+    const res = await fetch(`${API_URL}mentor/requests/${bookingId}?mentor_id=${mentorId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

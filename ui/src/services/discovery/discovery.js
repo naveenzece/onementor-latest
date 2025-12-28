@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001';
+import { API_URL } from "../apiendpoints";
 
 // Discover mentors with filters
 export async function discoverMentors(filters = {}) {
@@ -10,8 +10,8 @@ export async function discoverMentors(filters = {}) {
         queryParams.append(key, filters[key]);
       }
     });
-    
-    const url = `${API_BASE}/api/mentors${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+
+    const url = `${API_URL}mentors${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     const res = await fetch(url, {
       method: 'GET',
       credentials: 'include',

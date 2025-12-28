@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001';
+import { API_URL } from "../apiendpoints";
 
 /**
  * Get Google Calendar OAuth authorization URL for users
@@ -14,7 +14,7 @@ export async function getCalendarAuthUrl(userId, opts = {}) {
     if (opts.selectedSlotId) params.set('selectedSlotId', opts.selectedSlotId);
     if (opts.sessionType) params.set('sessionType', opts.sessionType);
 
-    const res = await fetch(`${API_BASE}/api/user/calendar/auth-url?${params.toString()}`, {
+    const res = await fetch(`${API_URL}user/calendar/auth-url?${params.toString()}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -36,7 +36,7 @@ export async function getCalendarAuthUrl(userId, opts = {}) {
  */
 export async function getCalendarStatus(userId) {
   try {
-    const res = await fetch(`${API_BASE}/api/user/calendar/status?user_id=${userId}`, {
+    const res = await fetch(`${API_URL}user/calendar/status?user_id=${userId}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -59,7 +59,7 @@ export async function getCalendarStatus(userId) {
  */
 export async function disconnectCalendar(userId) {
   try {
-    const res = await fetch(`${API_BASE}/api/user/calendar/disconnect`, {
+    const res = await fetch(`${API_URL}user/calendar/disconnect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

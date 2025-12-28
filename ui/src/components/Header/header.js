@@ -9,6 +9,8 @@ import { User, LogOut, Mail, ChevronDown } from "lucide-react";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 import Loader from "@/components/ui/loader/loader";
 
+import { logout } from "@/services/auth/auth";
+
 export default function Header() {
     const [userEmail, setUserEmail] = useState("");
     const [userName, setUserName] = useState("");
@@ -26,29 +28,21 @@ export default function Header() {
     const handleLogout = async () => {
         setLoading(true);
         try {
-            const res = await fetch("http://localhost:8001/api/auth/logout", {
-                method: "POST",
-                credentials: "include",
-            });
+            await logout();
 
-            if (res.ok) {
-                // Clear localStorage
-                localStorage.removeItem("userId");
-                localStorage.removeItem("userRole");
-                localStorage.removeItem("userEmail");
-                localStorage.removeItem("userName");
-                localStorage.removeItem("token");
+            // Clear localStorage
+            localStorage.removeItem("userId");
+            localStorage.removeItem("userRole");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("userName");
+            localStorage.removeItem("token");
 
-                toastrSuccess("Logged out successfully!");
-                // Redirect to login - keep loader visible during redirect
-                setTimeout(() => {
-                    router.push("/login");
-                }, 1000);
-                // Don't set loading to false - keep it visible during redirect
-            } else {
-                toastrError("Logout failed. Please try again.");
-                setLoading(false);
-            }
+            toastrSuccess("Logged out successfully!");
+            // Redirect to login - keep loader visible during redirect
+            setTimeout(() => {
+                router.push("/login");
+            }, 1000);
+            // Don't set loading to false - keep it visible during redirect
         } catch (err) {
             console.error("Logout error:", err);
             // Clear localStorage even on error

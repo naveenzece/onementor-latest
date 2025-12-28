@@ -1,9 +1,9 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001';
+import { API_URL } from "../apiendpoints";
 
 // Signup user (creates account with password)
 export async function createUser(userData) {
   try {
-    const res = await fetch(`${API_BASE}/api/users/signup`, {
+    const res = await fetch(`${API_URL}users/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -23,7 +23,7 @@ export async function createUser(userData) {
 // Get user profile
 export async function getUserProfile(userId) {
   try {
-    const res = await fetch(`${API_BASE}/api/profile/${userId}`, {
+    const res = await fetch(`${API_URL}profile/${userId}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -41,7 +41,7 @@ export async function getUserProfile(userId) {
 // Create/Update user profile
 export async function saveUserProfile(formData) {
   try {
-    const res = await fetch(`${API_BASE}/api/profile`, {
+    const res = await fetch(`${API_URL}profile`, {
       method: 'POST',
       credentials: 'include',
       body: formData, // FormData with file

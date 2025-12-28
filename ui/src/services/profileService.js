@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8001";
+import { API_URL } from "./apiendpoints";
 
 export const getMentorProfile = async (mentorId) => {
   const token =
@@ -7,7 +7,7 @@ export const getMentorProfile = async (mentorId) => {
     localStorage.getItem("authToken") ||
     "";
 
-  const url = `${API_BASE.replace(/\/+$/, '')}/api/mentor/profile/${mentorId}`;
+  const url = `${API_URL}mentor/profile/${mentorId}`;
 
   const res = await fetch(url, {
     method: "GET",
