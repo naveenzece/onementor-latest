@@ -74,6 +74,7 @@ export default function CoachDashboard() {
       }
 
       const profile = response;
+      console.log(profile);
 
       // Check profile completion: needs username, category, bio, and skills
       let skillsValid = false;
@@ -109,7 +110,7 @@ export default function CoachDashboard() {
         profileComplete,
         accountComplete,
         slotComplete,
-        registrationFeeComplete: false // Force false as requested
+        registrationFeeComplete: profile.registered
       });
     } catch (error) {
       console.error("Error fetching setup progress:", error);

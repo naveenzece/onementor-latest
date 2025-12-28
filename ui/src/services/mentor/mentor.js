@@ -197,7 +197,7 @@ export async function updateBookingStatus(bookingId, mentorId, status, meetingLi
 // Get registration fee
 export async function getRegistrationFee() {
   try {
-    const res = await fetch(`${API_BASE}/api/registration-fee`, {
+    const res = await fetch(`${API_URL}registration-fee`, {
       method: 'GET',
       credentials: 'include',
     });

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { verifyPayment, updatePaymentStatus, handleWebhook, createPayoutOrder, createPaymentSession, verifyWebhookSignature } = require("../services/paymentService");
+const checkAuth = require('../middleware/check-auth');
+const { verifyPayment, updatePaymentStatus, handleWebhook, createPayoutOrder, createPaymentSession, verifyWebhookSignature, getOrderStatus } = require("../services/paymentService");
 const { generateOrderId, generateCustomerId } = require("../util/generators");
 const db = require("../config/mysql");
 
@@ -193,16 +194,16 @@ router.post("/payout", async (req, res) => {
     const bookedSlots = slots.filter(s => s.is_booked);
     if (bookedSlots.length > 0) {
       await connection.rollback();
-      return res.status(400).json({ 
-        error: `Slot(s) ${bookedSlots.map(s => s.id).join(', ')} are already booked` 
+      return res.status(400).json({
+        error: `Slot(s) ${bookedSlots.map(s => s.id).join(', ')} are already booked`
       });
     }
 
     const inactiveSlots = slots.filter(s => !s.is_active);
     if (inactiveSlots.length > 0) {
       await connection.rollback();
-      return res.status(400).json({ 
-        error: `Slot(s) ${inactiveSlots.map(s => s.id).join(', ')} are not active` 
+      return res.status(400).json({
+        error: `Slot(s) ${inactiveSlots.map(s => s.id).join(', ')} are not active`
       });
     }
 
@@ -303,9 +304,9 @@ router.post("/payout", async (req, res) => {
         orderId: payoutOrderId,
         status: 'CREATED',
         amount: amount,
-        responseData: { 
-          mock: true, 
-          message: "Internal testing - Juspay skipped" 
+        responseData: {
+          mock: true,
+          message: "Internal testing - Juspay skipped"
         },
         fulfillments: [],
         payments: []
@@ -609,7 +610,7 @@ router.post("/session", async (req, res) => {
     // Create payment session
     // Create payment session
     let sessionResult;
-    
+
     if (process.env.USE_JUSPAY === 'true') {
       sessionResult = await createPaymentSession({
         order_id: booking.payout_order_id, // Use payout_order_id as order_id
@@ -630,8 +631,8 @@ router.post("/session", async (req, res) => {
         }
       });
     } else {
-       console.log("Mocking payment session (USE_JUSPAY != true)");
-       sessionResult = {
+      console.log("Mocking payment session (USE_JUSPAY != true)");
+      sessionResult = {
         success: true,
         sessionId: 'mock_sess_' + Date.now(),
         orderId: booking.payout_order_id,
@@ -640,7 +641,7 @@ router.post("/session", async (req, res) => {
           web: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/userdashboard/userpayment?bookingId=${booking.id}&mock=true`
         },
         sdkPayload: {}
-       };
+      };
     }
 
     if (!sessionResult.success) {
@@ -788,40 +789,40 @@ router.post("/webhook", async (req, res) => {
   try {
     // Get raw body for signature verification
     const rawBody = JSON.stringify(req.body);
-    
+
     // Get signature from header (JUSPAY typically sends it in x-juspay-signature or x-signature)
-    const signature = req.headers['x-juspay-signature'] || 
-                     req.headers['x-signature'] || 
-                     req.headers['signature'];
+    const signature = req.headers['x-juspay-signature'] ||
+      req.headers['x-signature'] ||
+      req.headers['signature'];
 
     // Log webhook receipt
     const eventName = req.body.event_name || 'UNKNOWN';
-    const orderId = req.body.content?.order?.order_id || 
-                   req.body.content?.order?.id || 
-                   req.body.order_id || 
-                   req.body.id || 
-                   'UNKNOWN';
-    
+    const orderId = req.body.content?.order?.order_id ||
+      req.body.content?.order?.id ||
+      req.body.order_id ||
+      req.body.id ||
+      'UNKNOWN';
+
     console.log(`[Webhook] Received ${eventName} for order_id: ${orderId}`);
     console.log(`[Webhook] Full payload:`, JSON.stringify(req.body, null, 2));
 
     // Verify webhook signature (optional but recommended for security)
     if (process.env.USE_JUSPAY === 'true') {
-        if (!signature || !verifyWebhookSignature(rawBody, signature)) { 
-            // Note: Enforcing signature presence if strictly in prod, 
-            // or perform check only if signature exists? 
-            // Usually JUSPAY strictly sends it. 
-            // However, sticking to the existing pattern:
-             if (signature && !verifyWebhookSignature(rawBody, signature)) {
-              console.error('[Webhook] Invalid webhook signature');
-              return res.status(401).json({ 
-                success: false,
-                error: 'Invalid webhook signature' 
-              });
-            }
+      if (!signature || !verifyWebhookSignature(rawBody, signature)) {
+        // Note: Enforcing signature presence if strictly in prod, 
+        // or perform check only if signature exists? 
+        // Usually JUSPAY strictly sends it. 
+        // However, sticking to the existing pattern:
+        if (signature && !verifyWebhookSignature(rawBody, signature)) {
+          console.error('[Webhook] Invalid webhook signature');
+          return res.status(401).json({
+            success: false,
+            error: 'Invalid webhook signature'
+          });
         }
+      }
     } else {
-        console.log('[Webhook] Skipping signature verification (USE_JUSPAY != true)');
+      console.log('[Webhook] Skipping signature verification (USE_JUSPAY != true)');
     }
 
     // Process webhook
@@ -836,9 +837,9 @@ router.post("/webhook", async (req, res) => {
     res.status(200).json(result);
   } catch (err) {
     console.error("[Webhook] Processing error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: "Server error", 
+      error: "Server error",
       details: err.message,
       stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
@@ -846,6 +847,127 @@ router.post("/webhook", async (req, res) => {
 });
 
 
+
+
+/**
+ * @swagger
+ * /api/payment/status/{order_id}:
+ *   get:
+ *     summary: Get order status from JUSPAY
+ *     description: Fetches the current status of an order directly from JUSPAY using the order_id.
+ *     tags: [Payment]
+ *     parameters:
+ *       - in: path
+ *         name: order_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The order_id to check status for
+ *         example: "PAYOUT_1234567890_abc123"
+ *     responses:
+ *       200:
+ *         description: Order status fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 status:
+ *                   type: string
+ *                 status_id:
+ *                   type: integer
+ *                 amount:
+ *                   type: number
+ *                 currency:
+ *                   type: string
+ *       404:
+ *         description: Order not found
+ *       500:
+ *         description: Server error
+ */
+router.get("/status/:order_id", async (req, res) => {
+  try {
+    const { order_id } = req.params;
+    if (!order_id) {
+      return res.status(400).json({ error: "order_id is required" });
+    }
+
+    const result = await getOrderStatus(order_id);
+
+    if (result.success) {
+      // Logic for Registration Payments (REG_ prefix)
+      if (order_id.startsWith('REG_')) {
+        try {
+          // 1. Get transaction info from registration_payments
+          const [regPayments] = await db.query(
+            "SELECT id, mentor_id, status FROM registration_payments WHERE order_id = ?",
+            [order_id]
+          );
+
+          if (regPayments.length > 0) {
+            const regPayment = regPayments[0];
+
+            // 2. Handle Success Case
+            if (result.status === 'CHARGED' || result.status === 'SUCCESS') {
+              if (regPayment.status !== 'completed') {
+                // Update payment status to completed
+                await db.query(
+                  "UPDATE registration_payments SET status = 'completed', transaction_id = ?, updated_at = NOW() WHERE id = ?",
+                  [result.txnId || null, regPayment.id]
+                );
+
+                // Update mentor profile (only if registered is 0)
+                await db.query(
+                  "UPDATE mentor_profiles SET registered = 1 WHERE user_id = ? AND registered = 0",
+                  [regPayment.mentor_id]
+                );
+
+                console.log(`Successfully updated registration (COMPLETED) for mentor_id: ${regPayment.mentor_id}`);
+              }
+            }
+            // 3. Handle Failure Case
+            else if (['FAILED', 'AUTHENTICATION_FAILED', 'AUTHORIZATION_FAILED', 'CANCELLED', 'RESTRICTED'].includes(result.status)) {
+              if (regPayment.status !== 'failed') {
+                // Update payment status to failed
+                await db.query(
+                  "UPDATE registration_payments SET status = 'failed', transaction_id = ?, updated_at = NOW() WHERE id = ?",
+                  [result.txnId || null, regPayment.id]
+                );
+                console.log(`Updated registration status to FAILED for order_id: ${order_id}`);
+              }
+            }
+          }
+        } catch (dbErr) {
+          console.error("Database update error during status check:", dbErr);
+        }
+      }
+
+      // Share only basic details with frontend
+      return res.json({
+        success: true,
+        orderId: result.orderId,
+        status: result.status,
+        statusId: result.statusId,
+        amount: result.amount,
+        currency: result.currency,
+        paymentMethod: result.paymentMethod,
+        respMessage: result.respMessage
+      });
+    } else {
+      const statusCode = result.status === 'NOT_FOUND' ? 404 : 400;
+      return res.status(statusCode).json({
+        success: false,
+        status: result.status,
+        error: result.error || "Failed to fetch order status"
+      });
+    }
+  } catch (err) {
+    console.error("Get order status route error:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+});
 
 module.exports = router;
 

@@ -1,6 +1,11 @@
 const express = require("express");
 const checkAuth = require('../middleware/check-auth');
-const { fetchUser, createUser, editUser, deleteUser
+const {
+    fetchUser,
+    createUser,
+    editUser,
+    deleteUser,
+    createRegistrationPayment
 } = require("../controller/coach");
 
 const router = express.Router();
@@ -113,5 +118,29 @@ router.put("/editUser/:id", editUser);
  */
 router.delete("/deleteUser/:id", deleteUser);
 
+/**
+ * @swagger
+ * /api/coach/registration-session:
+ *   post:
+ *     summary: Create registration fee payment session for mentor
+ *     tags: [Mentor]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               user_id:
+ *                 type: integer
+ *             required:
+ *               - user_id
+ *     responses:
+ *       200:
+ *         description: Session created successfully
+ *       400:
+ *         description: Error creating session
+ */
+router.post("/registration-session", createRegistrationPayment);
 
 module.exports = router;

@@ -91,7 +91,7 @@ export default function SetupProgress({
           const isClickable = !task.completed;
 
           const isRegistrationFee = task.id === 'registration-fee';
-          const isCompleted = task.completed && !isRegistrationFee;
+          const isCompleted = task.completed;
 
           return (
             <div
@@ -121,7 +121,7 @@ export default function SetupProgress({
               </div>
 
               {/* Lock Icon for incomplete tasks when all not done */}
-              {!allComplete && !isCompleted && !isRegistrationFee && (
+              {!allComplete && !isCompleted && (
                 <div className="absolute top-2 right-2">
                   <LockClosedIcon className="w-5 h-5 text-gray-400" />
                 </div>
@@ -129,10 +129,12 @@ export default function SetupProgress({
 
               <div className="mt-4">
                 <div className="flex items-center space-x-3 mb-3">
-                  <Icon className={`
-                    w-8 h-8
-                    ${isCompleted ? 'text-green-600' : 'text-gray-400'}
-                  `} />
+                  <div className={`p-2 rounded-lg ${isCompleted ? 'bg-green-100' : 'bg-gray-100'}`}>
+                    <Icon className={`
+                      w-6 h-6
+                      ${isCompleted ? 'text-green-600' : 'text-gray-400'}
+                    `} />
+                  </div>
                   <h3 className={`
                     text-lg font-bold
                     ${isCompleted ? 'text-green-700' : 'text-gray-900'}
@@ -151,7 +153,7 @@ export default function SetupProgress({
                 ) : (
                   <div className="flex items-center space-x-2 text-blue-600">
                     <span className="text-sm font-medium">
-                      {isRegistrationFee ? 'Click to view' : 'Click to complete'}
+                      Click to complete
                     </span>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

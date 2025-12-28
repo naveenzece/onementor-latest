@@ -102,3 +102,42 @@ export function redirectToPayment(paymentUrl) {
   }
 }
 
+
+// Create registration payment session
+export async function createRegistrationSession(userId) {
+  try {
+    const res = await fetch(`${API_URL}coach/registration-session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify({ user_id: userId }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: data.error || 'Failed to create registration session', ...data };
+    }
+    return data;
+  } catch (err) {
+    console.error("Error creating registration session:", err);
+    return { error: "Network error" };
+  }
+}
+
+// Get order status
+export async function getOrderStatus(orderId) {
+  try {
+    const res = await fetch(`${API_URL}payment/status/${orderId}`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: data.error || 'Failed to fetch order status', ...data };
+    }
+    return data;
+  } catch (err) {
+    console.error('getOrderStatus error', err);
+    return { error: 'Network error' };
+  }
+}

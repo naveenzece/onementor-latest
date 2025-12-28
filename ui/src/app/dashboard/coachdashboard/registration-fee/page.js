@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { ArrowLeftIcon, BanknotesIcon, InformationCircleIcon, CreditCardIcon } from "@heroicons/react/24/outline";
-import { getRegistrationFee } from "@/services/mentor/mentor";
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
+import { getRegistrationFee, getMentorProfile } from "@/services/mentor/mentor";
+import { createRegistrationSession } from "@/services/payment/payment";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 
 export default function RegistrationFeeSetup() {
@@ -15,10 +17,25 @@ export default function RegistrationFeeSetup() {
     const [formData, setFormData] = useState({
         amount: "200.00",
     });
+    const [alreadyPaid, setAlreadyPaid] = useState(false);
 
     useEffect(() => {
         fetchFee();
+        checkRegistrationStatus();
     }, []);
+
+    const checkRegistrationStatus = async () => {
+        try {
+            const userId = localStorage.getItem("userId");
+            if (!userId) return;
+            const profile = await getMentorProfile(userId);
+            if (!profile.error && profile.registered) {
+                setAlreadyPaid(true);
+            }
+        } catch (error) {
+            console.error("Error checking registration status:", error);
+        }
+    };
 
     const fetchFee = async () => {
         setFetching(true);
@@ -37,15 +54,29 @@ export default function RegistrationFeeSetup() {
     const handlePayment = async () => {
         setPaying(true);
         try {
-            // For now, we simulate the payment process
-            // In a real scenario, this would call the JUSPAY or other payment gateway integration
-            console.log(`Initiating payment for ₹${formData.amount}`);
+            // Get user from localStorage
+            const userId = localStorage.getItem("userId");
 
-            // Simulating a network delay
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            if (!userId) {
+                toastrError("User session not found. Please log in again.");
+                return;
+            }
 
-            toastrSuccess("Redirecting to payment gateway...");
-            // router.push('/payment-gateway-url');
+            console.log(`Initiating registration payment for user ${userId}`);
+
+            const response = await createRegistrationSession(userId);
+
+            if (response.error) {
+                toastrError(response.error);
+                return;
+            }
+
+            if (response.payment_url) {
+                toastrSuccess("Redirecting to payment gateway...");
+                window.location.href = response.payment_url;
+            } else {
+                toastrError("Failed to get payment URL. Please contact support.");
+            }
         } catch (error) {
             console.error("Payment error:", error);
             toastrError("Failed to initiate payment. Please try again.");
@@ -111,16 +142,21 @@ export default function RegistrationFeeSetup() {
 
                                 {/* Pay Button */}
                                 <button
-                                    onClick={handlePayment}
+                                    onClick={alreadyPaid ? () => router.push("/dashboard/coach") : handlePayment}
                                     disabled={paying}
                                     className={`w-full py-4 px-6 rounded-xl font-bold text-white transition-all transform hover:scale-[1.02] flex items-center justify-center space-x-3
-                                ${paying ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:shadow-lg hover:from-indigo-700 hover:to-purple-700'}
-                            `}
+                                 ${paying ? 'bg-gray-400 cursor-not-allowed' : alreadyPaid ? 'bg-green-600 hover:bg-green-700' : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:shadow-lg hover:from-indigo-700 hover:to-purple-700'}
+                             `}
                                 >
                                     {paying ? (
                                         <>
                                             <div className="spinner-white mr-2" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
                                             <span>Processing...</span>
+                                        </>
+                                    ) : alreadyPaid ? (
+                                        <>
+                                            <CheckCircleIcon className="w-6 h-6" />
+                                            <span>Registration Completed</span>
                                         </>
                                     ) : (
                                         <>
@@ -129,6 +165,12 @@ export default function RegistrationFeeSetup() {
                                         </>
                                     )}
                                 </button>
+
+                                {alreadyPaid && (
+                                    <p className="text-center text-green-600 font-medium text-sm flex items-center justify-center gap-1">
+                                        <CheckCircleIcon className="w-4 h-4" /> You've already completed the registration.
+                                    </p>
+                                )}
 
                                 {/* Security Note */}
                                 <div className="flex items-center justify-center space-x-2 text-xs text-gray-400 mt-4">

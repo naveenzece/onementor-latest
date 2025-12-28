@@ -6,11 +6,11 @@ exports.createMentorProfile = async (req, res) => {
     // Handle both JSON and FormData
     const { user_id, username, category, bio, skills, other_skills, hourly_rate } = req.body;
     const resume = req.file ? req.file.filename : null;
-    
+
     // Parse JSON strings if they come from FormData
     let parsedSkills = skills;
     let parsedOtherSkills = other_skills;
-    
+
     if (typeof skills === 'string' && skills.trim().startsWith('[')) {
       try {
         parsedSkills = JSON.parse(skills);
@@ -18,7 +18,7 @@ exports.createMentorProfile = async (req, res) => {
         // Keep as string if parsing fails
       }
     }
-    
+
     if (typeof other_skills === 'string' && other_skills.trim().startsWith('[')) {
       try {
         parsedOtherSkills = JSON.parse(other_skills);
@@ -123,7 +123,11 @@ exports.getMentorProfile = async (req, res) => {
       return res.status(404).json({ error: "Mentor profile not found" });
     }
 
-    return res.json(profiles[0]);
+    const profile = profiles[0];
+    // Convert 0/1 to false/true for frontend
+    profile.registered = profile.registered === 1;
+
+    return res.json(profile);
   } catch (err) {
     console.error("Error getting mentor profile:", err);
     return res.status(500).json({ error: "Database error" });

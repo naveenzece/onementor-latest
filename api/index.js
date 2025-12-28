@@ -138,6 +138,10 @@ app.use("/api/payment", paymentRoutes);
 // Registration Fee routes
 app.use("/api/registration-fee", registrationFeeRoutes);
 
+// Coach management routes
+const coachRoutes = require("./routes/coachRoute");
+app.use("/api/coach", coachRoutes);
+
 // Swagger docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 

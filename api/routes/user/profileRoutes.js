@@ -24,7 +24,7 @@ router.post('/', upload.single('resume'), async (req, res) => {
   try {
     // Get user_id from body or session
     let user_id = req.body.user_id;
-    
+
     // If not in body, try to get from session
     if (!user_id && req.session && req.session.user) {
       user_id = req.session.user.id;

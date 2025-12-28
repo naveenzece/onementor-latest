@@ -3,14 +3,14 @@ const crypto = require('crypto');
 const db = require('../config/mysql');
 
 // JUSPAY Configuration
-const JUSPAY_MERCHANT_ID = process.env.JUSPAY_MERCHANT_ID || 'ONEMENTORS';
-const JUSPAY_API_KEY = process.env.JUSPAY_API_KEY || '68757B44F6447DE8D36E9C484504B2'
+const JUSPAY_MERCHANT_ID = 'ONEMENTORS';
+const JUSPAY_API_KEY = '68757B44F6447DE8D36E9C484504B2'
 //'770CA820CB74397AD51087EC5CA9F0';
-const JUSPAY_CLIENT_ID = process.env.JUSPAY_CLIENT_ID || '';
-const JUSPAY_BASE_URL = process.env.JUSPAY_BASE_URL || 'https://api.juspay.in';
-const JUSPAY_SANDBOX_URL = process.env.JUSPAY_SANDBOX_URL || 'https://sandbox.juspay.in';
-const JUSPAY_RETURN_URL = process.env.JUSPAY_RETURN_URL || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/callback`;
-const JUSPAY_PAYOUT_BASE_URL = process.env.JUSPAY_PAYOUT_BASE_URL || JUSPAY_SANDBOX_URL; // Use sandbox for payout API
+const JUSPAY_CLIENT_ID = 'MIIEpQIBAAKCAQEA2R+5+b1HZSNNMotnr7Z/5By4NSTZW4dDMGDy2huOSLn1EF6v75sssdY5kRkFoihLIeNQA+yzsi0kzpz3rCCCmo1DJwgoqA48JVQwwBjZ9SHeC0nE66VODmMJJGNWe1quHWQb3otIzS+U+rtd1Alzo9up8u8e+FrecyjO6fBMZfd32iO7qPtExtA1XDtKMqoRbHMiAz940xA5+BLmJC+gp1IYsVce2KA5BW1laPxbku42aQR7eZipSa3BYRY8m964Aj6vLj4kTeTbrc4OH7yatRdWbVbrwVWpg936g8Q3Qf3jQY+HMu76l1WeXK4GkPkA+oJXY6ag1XhhqtOrLw3rJwIDAQABAoIBAQCjy2thG4lgouD54HC3/dU9IO1WKhZPFht5w6lxIJiWBLL7RnMzLrzo69NBwr6dNgh36CPU0hw9rhC2TXQKRfxA25BtQZpqLVLyVjDwuc6zPnljyqLjojDgaZXb/ZSgOihfw8XCfRDOubaJ8A84hmjWlEABJKMYeHSYK5Dsqnr37/Oj4OT2NWLaRx8Kk0HPuv/bxx3MHurIHRtG514UJZcOfN8Ti69/DoYbtb/Mpg/djXr5s47TafxPa8jyT2E8nWboPvYPDQcdu2CIE0mbrj2C0Ak7g20ZYzm9HCbJHVG+2rPSjVgXKW2ZgXoZflte+G5vRfDrZH+TZuo+ja0pVlIBAoGBAP4ZEtdpRJp5kvj7bUIkXd5E6lrxd2M0VprfMhHk0i+Z1p1nF8StF6p9uIGuRIEthvdRZVy56fWCHXOfmquRJDHazQZVnnXcRaqhuMYdZoJ3i1KkmSL4X/SdBsB4rY4FQZWNtwKoSeDugQeJzf4bhyn0iZGbWPq+XO70MxXya8CfAoGBANq/zL6ul+G6i/nXrfzwUr83EtXh6Zoj51YBK4g3ZIIuWkWvbo9NguV3p9KmeRKMWwYORHC7aVwpHdjzOyzmSFdmC+5dqVe6rkdl9AzxpKt0p0rOznmZUhDcdElCk0p6pC5RQDAt2PA4aR3kT+9z2dPV0IHsUGiouF/LtmTmdCB5AoGAIShUdRefhCjpLORiVYc5WI/VpRhtY9yokH0fo4Ygh2Wjw9Z4G4oa1HyjXwjGl7TBL/THLVp1VTwta7EgFdNSzc6ngnQZwXeE/8cqvW+IuO2wmJAyC4Ytv1XeU69rtmSpMkLT5tzfByMYY0twPgCJmsf2S7Hh4paEugnTwMFpnjECgYEAoTqc/i5RY97LLOr7ImM/mhBNobdRJnswFwPlwhCR1CG2B4a2Rokq4VbAK1LoCfPJYz1A1JZNoc/sX+tmwkE5MLHWOWpvVmoR6i4LIz83z+e7JjgnlxialDLowtZ/GXYrbLgWR2yDaQsq7w1InYUWGDyP4jL7USiKPJE5bkUtcoECgYEAwhbb1NxzteIr8zlytMj52sgeiJPQRjbU5CoMAJuiHvYHT8jQwso7lfbz+fXdQamU29v1Hdhc2JR1xWxrTz4bAt1l9lWK8zQBTK3SOlhyvrvNkKtTwjansR6+uwB9KY5mrF++pRA8IL2f0yhx2uqwDkX/Og6ZnFHJn3BvQM/DWPg=';
+const JUSPAY_BASE_URL = 'https://sandbox.juspay.in';
+const JUSPAY_SANDBOX_URL = 'https://sandbox.juspay.in';
+const JUSPAY_RETURN_URL = 'http://localhost:3000/payment/callback';
+const JUSPAY_PAYOUT_BASE_URL = JUSPAY_SANDBOX_URL; // Use sandbox for payout API
 
 /**
  * Validate VPA (UPI ID) using JUSPAY payout API
@@ -48,7 +48,7 @@ async function validateVPA(vpaData) {
 
     // Prepare request payload
     const payload = {
-      command: 'VALIDATE',
+      command: 'CREATE',
       customerId: customerId || `customer_${Date.now()}`,
       email: email,
       phone: formattedPhone,
@@ -68,7 +68,8 @@ async function validateVPA(vpaData) {
 
     // Make API call to JUSPAY payout API
     // Basic Auth format: Username = API Key, Password = Empty string
-    const authHeader = `Basic ${Buffer.from(`${JUSPAY_API_KEY}:`).toString('base64')}`;
+    const authHeader = `Basic ${Buffer.from(JUSPAY_API_KEY + ':').toString('base64')}`;
+    console.log(authHeader, JUSPAY_PAYOUT_BASE_URL, payload);
 
     const response = await axios.post(
       `${JUSPAY_PAYOUT_BASE_URL}/payout/merchant/v2/benedetails`,
@@ -76,7 +77,7 @@ async function validateVPA(vpaData) {
       {
         headers: {
           'Content-Type': 'application/json',
-          'x-merchantId': JUSPAY_MERCHANT_ID,
+          'x-merchantid': JUSPAY_MERCHANT_ID,
           'Authorization': authHeader
         }
       }
@@ -129,7 +130,7 @@ async function getBeneficiaryStatus(customerId, beneId) {
     }
 
     // Basic Auth format: Username = API Key, Password = Empty string
-    const authHeader = `Basic ${Buffer.from(`${JUSPAY_API_KEY}:`).toString('base64')}`;
+    const authHeader = `Basic ${Buffer.from(JUSPAY_API_KEY + ':').toString('base64')}`;
 
     // Make API call to JUSPAY payout API
     const response = await axios.get(
@@ -247,7 +248,7 @@ async function createPayoutOrder(payoutData) {
     }
 
     // Basic Auth format: Username = API Key, Password = Empty string
-    const authHeader = `Basic ${Buffer.from(`${JUSPAY_API_KEY}:`).toString('base64')}`;
+    const authHeader = `Basic ${Buffer.from(JUSPAY_API_KEY + ':').toString('base64')}`;
 
     // Prepare headers
     const headers = {
@@ -363,7 +364,7 @@ async function createPaymentSession(sessionData) {
     }
 
     // Basic Auth format: Username = API Key, Password = Empty string
-    const authHeader = `Basic ${Buffer.from(`${JUSPAY_API_KEY}:`).toString('base64')}`;
+    const authHeader = `Basic ${Buffer.from(JUSPAY_API_KEY + ':').toString('base64')}`;
 
     // Prepare headers
     const headers = {
@@ -403,6 +404,173 @@ async function createPaymentSession(sessionData) {
     return {
       success: false,
       error: error.response?.data?.error_message || error.response?.data?.message || error.message || 'Failed to create payment session',
+      responseData: error.response?.data
+    };
+  }
+}
+
+
+/**
+ * Create registration fee payment session for mentor onboarding
+ * @param {Object} sessionData - Payment session details
+ */
+async function createRegistrationFeeSession(sessionData) {
+  try {
+    const {
+      order_id,
+      amount,
+      customer_id,
+      customer_email,
+      customer_phone,
+      first_name,
+      last_name,
+      description,
+      return_url,
+      metadata = {}
+    } = sessionData;
+
+    if (!order_id || !amount || !customer_id || !customer_email) {
+      return {
+        success: false,
+        error: 'order_id, amount, customer_id, and customer_email are required'
+      };
+    }
+
+    // Basic Auth format: Username = API Key, Password = Empty string
+    const authHeader = `Basic ${Buffer.from(JUSPAY_API_KEY + ':').toString('base64')}`;
+
+    // Prepare request payload
+    const payload = {
+      order_id,
+      amount: amount.toString(),
+      customer_id,
+      customer_email,
+      customer_phone: customer_phone || '',
+      payment_page_client_id: JUSPAY_CLIENT_ID,
+      action: 'paymentPage',
+      return_url: return_url || JUSPAY_RETURN_URL,
+      description: description || 'Mentor Registration Fee',
+      theme: 'dark',
+      first_name: first_name || '',
+      last_name: last_name || '',
+      ...(metadata && Object.keys(metadata).length > 0 && {
+        ...Object.keys(metadata).reduce((acc, key) => {
+          acc[`metadata.${key}`] = metadata[key];
+          return acc;
+        }, {})
+      })
+    };
+
+    const response = await axios.post(
+      `${JUSPAY_BASE_URL}/session`,
+      payload,
+      {
+        headers: {
+          'Authorization': authHeader,
+          'x-merchantid': JUSPAY_MERCHANT_ID,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.data && response.data.id) {
+      return {
+        success: true,
+        sessionId: response.data.id,
+        orderId: response.data.order_id,
+        status: response.data.status,
+        paymentLinks: response.data.payment_links || {},
+        sdkPayload: response.data.sdk_payload || {},
+        responseData: response.data
+      };
+    } else {
+      return {
+        success: false,
+        error: 'Failed to create registration fee session',
+        responseData: response.data
+      };
+    }
+  } catch (error) {
+    console.error('JUSPAY Create Registration Session Error:', error.response?.data || error.message);
+    return {
+      success: false,
+      error: error.response?.data?.error_message || error.response?.data?.message || error.message || 'Failed to create registration fee session',
+      responseData: error.response?.data
+    };
+  }
+}
+/**
+ * Get order status from JUSPAY
+ * @param {string} orderId - Order ID to check
+ */
+async function getOrderStatus(orderId) {
+  try {
+    if (!orderId) {
+      return {
+        success: false,
+        error: 'orderId is required'
+      };
+    }
+
+    // Basic Auth format: Username = API Key, Password = Empty string
+    const authHeader = `Basic ${Buffer.from(JUSPAY_API_KEY + ':').toString('base64')}`;
+
+    // Make API call to JUSPAY order status API
+    const response = await axios.get(
+      `${JUSPAY_BASE_URL}/orders/${orderId}`,
+      {
+        headers: {
+          'Authorization': authHeader,
+          'x-merchantid': JUSPAY_MERCHANT_ID,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.data) {
+      return {
+        success: true,
+        orderId: response.data.order_id,
+        status: response.data.status,
+        statusId: response.data.status_id,
+        amount: response.data.amount,
+        currency: response.data.currency,
+        paymentMethod: response.data.payment_method,
+        paymentMethodType: response.data.payment_method_type,
+        txnId: response.data.txn_id,
+        respCode: response.data.resp_code,
+        respMessage: response.data.resp_message,
+        bankErrorCode: response.data.bank_error_code,
+        bankErrorMessage: response.data.bank_error_message,
+        metadata: response.data.metadata,
+        paymentLinks: response.data.payment_links,
+        txnDetail: response.data.txn_detail,
+        responseData: response.data
+      };
+    } else {
+      return {
+        success: false,
+        error: 'No data received from JUSPAY',
+        responseData: response.data
+      };
+    }
+  } catch (error) {
+    console.error('JUSPAY Get Order Status Error:', error.response?.data || error.message);
+
+    // Handle 404 specially as "NOT_FOUND" 
+    if (error.response?.status === 404) {
+      return {
+        success: false,
+        status: 'NOT_FOUND',
+        statusId: 40,
+        error: 'Order not found',
+        responseData: error.response?.data
+      };
+    }
+
+    return {
+      success: false,
+      error: error.response?.data?.error_message || error.response?.data?.message || error.message || 'Failed to get order status',
       responseData: error.response?.data
     };
   }
@@ -495,11 +663,52 @@ async function handleWebhook(webhookData) {
     );
 
     if (bookings.length === 0) {
+      // Check if it's a registration payment
+      const [regPayments] = await connection.query(
+        `SELECT id, mentor_id, status FROM registration_payments WHERE order_id = ?`,
+        [orderId]
+      );
+
+      if (regPayments.length > 0) {
+        const regPayment = regPayments[0];
+        console.log(`Processing registration payment for mentor_id: ${regPayment.mentor_id}`);
+
+        if (regPayment.status === 'completed' && (status === 'CHARGED' || eventName === 'ORDER_SUCCEEDED')) {
+          await connection.rollback();
+          return { success: true, message: 'Registration payment already processed' };
+        }
+
+        let newRegStatus = 'pending';
+        if (eventName === 'ORDER_SUCCEEDED' || status === 'CHARGED' || status === 'SUCCESS') {
+          newRegStatus = 'completed';
+          // Update mentor profile to 'registered = 1'
+          await connection.query(
+            "UPDATE mentor_profiles SET registered = 1 WHERE user_id = ?",
+            [regPayment.mentor_id]
+          );
+        } else if (eventName === 'ORDER_FAILED' || status === 'FAILED') {
+          newRegStatus = 'failed';
+        }
+
+        await connection.query(
+          "UPDATE registration_payments SET status = ?, transaction_id = ?, updated_at = NOW() WHERE id = ?",
+          [newRegStatus, txnId, regPayment.id]
+        );
+
+        await connection.commit();
+        return {
+          success: true,
+          message: 'Registration payment processed',
+          mentor_id: regPayment.mentor_id,
+          status: newRegStatus
+        };
+      }
+
       await connection.rollback();
-      console.log(`Booking not found for order_id: ${orderId}`);
+      console.log(`Order not found for order_id: ${orderId}`);
       return {
         success: false,
-        error: 'Booking not found for this order_id',
+        error: 'Order not found for this order_id',
         order_id: orderId
       };
     }
@@ -742,6 +951,8 @@ module.exports = {
   getBeneficiaryStatus,
   createPayoutOrder,
   createPaymentSession,
+  createRegistrationFeeSession,
+  getOrderStatus,
   handleWebhook,
   verifyWebhookSignature
 };
