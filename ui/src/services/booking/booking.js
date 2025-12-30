@@ -100,3 +100,21 @@ export async function getUserSessionHistory(userId) {
   }
 }
 
+// Get user dashboard stats
+export async function getUserStats(userId) {
+  try {
+    const res = await fetch(`${API_URL}user/sessions/stats/${userId}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: data.error || "Failed to fetch stats" };
+    }
+    return data;
+  } catch (err) {
+    console.error("getUserStats error", err);
+    return { error: "Network error" };
+  }
+}

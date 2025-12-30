@@ -212,3 +212,21 @@ export async function getRegistrationFee() {
   }
 }
 
+// Get mentor upcoming sessions
+export async function getMentorUpcomingSessions(mentorId) {
+  try {
+    const res = await fetch(`${API_URL}mentor/sessions/upcoming/${mentorId}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: data.error || "Failed to fetch upcoming sessions" };
+    }
+    return data;
+  } catch (err) {
+    console.error("getMentorUpcomingSessions error", err);
+    return { error: "Network error" };
+  }
+}

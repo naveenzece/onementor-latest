@@ -78,5 +78,6 @@ router.get("/upcoming/:user_id", sessionsController.getUpcomingSessions);
  *         description: Server error
  */
 router.get("/history/:user_id", sessionsController.getSessionHistory);
+router.get("/stats/:user_id", sessionsController.getUserStats);
 
 module.exports = router;
