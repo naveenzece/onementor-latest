@@ -36,8 +36,8 @@ export async function getPaymentByBooking(bookingId) {
   }
 }
 
-// Create booking and payout order
-export async function createBooking(bookingData) {
+// Create booking and payout order (Old: uses payout API)
+export async function createBookingOld(bookingData) {
   try {
     const res = await fetch(`${API_URL}payment/payout`, {
       method: "POST",
@@ -53,6 +53,27 @@ export async function createBooking(bookingData) {
     return data;
   } catch (err) {
     console.error("createBooking error:", err);
+    return { error: err.message || "Network error" };
+  }
+}
+
+// Create booking session (New: bypasses payout API)
+export async function createBooking(bookingData) {
+  try {
+    const res = await fetch(`${API_URL}payment/booking-session`, {
+      method: "POST",
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bookingData),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: data.error || `HTTP error! status: ${res.status}`, ...data };
+    }
+    return data;
+  } catch (err) {
+    console.error("createBookingSession error:", err);
     return { error: err.message || "Network error" };
   }
 }

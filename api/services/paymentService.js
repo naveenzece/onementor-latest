@@ -46,10 +46,15 @@ async function validateVPA(vpaData) {
       formattedPhone = '+' + formattedPhone;
     }
 
+    // Generate unique beneficiary ID if not provided
+    // Use customerId to derive a unique beneId to ensure consistency
+    const finalCustomerId = customerId || `customer_${Date.now()}`;
+    const finalBeneId = beneId || finalCustomerId.replace('customer_', 'bene_');
+
     // Prepare request payload
     const payload = {
       command: 'CREATE',
-      customerId: customerId || `customer_${Date.now()}`,
+      customerId: finalCustomerId,
       email: email,
       phone: formattedPhone,
       beneDetails: {
@@ -58,13 +63,9 @@ async function validateVPA(vpaData) {
           vpa: vpa
         },
         type: 'UPI_ID'
-      }
+      },
+      beneId: finalBeneId
     };
-
-    // If beneId is provided, include it
-    if (beneId) {
-      payload.beneId = beneId;
-    }
 
     // Make API call to JUSPAY payout API
     // Basic Auth format: Username = API Key, Password = Empty string
@@ -331,7 +332,7 @@ async function createPaymentSession(sessionData) {
       action = 'paymentPage'
     } = sessionData;
 
-    if (!order_id || !amount || !customer_id || !customer_email || !customer_phone) {
+    if (!order_id || !amount || !customer_id || !customer_email) {
       return {
         success: false,
         error: 'order_id, amount, customer_id, customer_email, and customer_phone are required'
@@ -349,7 +350,20 @@ async function createPaymentSession(sessionData) {
       action,
       return_url: return_url || JUSPAY_RETURN_URL,
       description: description || 'Complete your payment',
-      theme
+      theme,
+      "payment_filter": {
+        "allowDefaultOptions": false,
+        "options": [
+          {
+            "paymentMethodType": "UPI",
+            "enable": true
+          },
+          {
+            "paymentMethodType": "CARD",
+            "enable": true
+          }
+        ]
+      }
     };
 
     // Add optional fields
@@ -373,6 +387,9 @@ async function createPaymentSession(sessionData) {
       'Content-Type': 'application/json'
     };
 
+    // For debugging: Log the payload
+    console.log("JUSPAY Session Request Payload:", JSON.stringify(payload, null, 2));
+
     // Make API call to JUSPAY session API
     const response = await axios.post(
       `${JUSPAY_BASE_URL}/session`,
@@ -381,6 +398,8 @@ async function createPaymentSession(sessionData) {
         headers: headers
       }
     );
+
+    console.log("JUSPAY Session Response Data:", JSON.stringify(response.data, null, 2));
 
     if (response.data && response.data.id) {
       return {
@@ -458,8 +477,11 @@ async function createRegistrationFeeSession(sessionData) {
           acc[`metadata.${key}`] = metadata[key];
           return acc;
         }, {})
-      })
+      }),
+      "payment_filter": { "allowDefaultOptions": false, "options": [{ "paymentMethodType": "UPI", "enable": true }, { "paymentMethodType": "CARD", "enable": true }] }
     };
+
+    console.log("JUSPAY Registration Session Request Payload:", JSON.stringify(payload, null, 2));
 
     const response = await axios.post(
       `${JUSPAY_BASE_URL}/session`,
@@ -472,6 +494,8 @@ async function createRegistrationFeeSession(sessionData) {
         }
       }
     );
+
+    console.log("JUSPAY Registration Session Response Data:", JSON.stringify(response.data, null, 2));
 
     if (response.data && response.data.id) {
       return {

@@ -7,7 +7,7 @@ const { generateCustomerId } = require("../../util/generators");
 const db = require("../../config/mysql");
 
 // Add env flag (case-insensitive support for both useJuspay and USE_JUSPAY)
-const useJuspay = String(process.env.useJuspay || process.env.USE_JUSPAY || '').toLowerCase() === 'true';
+const useJuspay = true
 
 // Multer config
 const storage = multer.diskStorage({
@@ -106,15 +106,15 @@ router.post("/vpa", async (req, res) => {
     const { mentor_id, vpa, name } = req.body;
 
     if (!mentor_id || !vpa) {
-      return res.status(400).json({ 
-        error: "mentor_id and vpa are required" 
+      return res.status(400).json({
+        error: "mentor_id and vpa are required"
       });
     }
 
     // Validate VPA format (basic check)
     if (!vpa.includes('@') || vpa.split('@').length !== 2) {
-      return res.status(400).json({ 
-        error: "Invalid VPA format. VPA should be in format: name@upi" 
+      return res.status(400).json({
+        error: "Invalid VPA format. VPA should be in format: name@upi"
       });
     }
 
@@ -147,7 +147,7 @@ router.post("/vpa", async (req, res) => {
 
     // Validate VPA using JUSPAY payout API or mock based on env
     let validationResult;
-    if (useJuspay) {
+    if (false) {
       const { validateVPA } = require("../../services/paymentService");
       validationResult = await validateVPA({
         vpa: vpa,
@@ -183,7 +183,7 @@ router.post("/vpa", async (req, res) => {
         [vpa, mentor_id]
       );
 
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: validationResult.error || "VPA validation failed",
         details: validationResult.responseData
       });
@@ -191,7 +191,7 @@ router.post("/vpa", async (req, res) => {
 
     // VPA is valid, save to database
     const vpaStatus = validationResult.status === 'valid' ? 'valid' : 'verified';
-    
+
     await db.query(
       `UPDATE mentor_profiles 
        SET vpa_id = ?,
@@ -253,8 +253,8 @@ router.get("/beneficiary/:mentor_id/status", async (req, res) => {
     const { mentor_id } = req.params;
 
     if (!mentor_id) {
-      return res.status(400).json({ 
-        error: "mentor_id is required" 
+      return res.status(400).json({
+        error: "mentor_id is required"
       });
     }
 
@@ -275,8 +275,8 @@ router.get("/beneficiary/:mentor_id/status", async (req, res) => {
     const profile = profileCheck[0];
 
     if (!profile.beneficiary_id) {
-      return res.status(400).json({ 
-        error: "Beneficiary ID not found. Please validate VPA first." 
+      return res.status(400).json({
+        error: "Beneficiary ID not found. Please validate VPA first."
       });
     }
 
@@ -305,7 +305,7 @@ router.get("/beneficiary/:mentor_id/status", async (req, res) => {
     }
 
     if (!statusResult.success) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: statusResult.error || "Failed to get beneficiary status",
         details: statusResult.responseData
       });

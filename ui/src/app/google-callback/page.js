@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Loader from "@/components/ui/loader/loader";
 import { toastrError, toastrSuccess } from "@/components/ui/toaster/toaster";
 
-export default function GoogleCallback() {
+function GoogleCallbackContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [loading, setLoading] = useState(true);
@@ -52,5 +52,13 @@ export default function GoogleCallback() {
         <div className="flex flex-col items-center justify-center min-h-screen">
             <Loader isLoading={true} message="Processing Google Login..." />
         </div>
+    );
+}
+
+export default function GoogleCallback() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <GoogleCallbackContent />
+        </Suspense>
     );
 }

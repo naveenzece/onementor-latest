@@ -38,6 +38,9 @@ function CallbackContent() {
                     if (orderId.startsWith('REG_')) {
                         userInfo.registered = 1;
                         localStorage.setItem('user_info', JSON.stringify(userInfo));
+                    } else if (orderId.startsWith('BOOK_')) {
+                        // Success handling for bookings
+                        console.log('Booking payment successful:', orderId);
                     }
                 } else if (result.status === "PENDING" || result.status === "NEW") {
                     setStatus("pending");
@@ -74,7 +77,11 @@ function CallbackContent() {
                             <CheckCircleIcon className="w-20 h-20 text-green-500" />
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900">Payment Successful!</h2>
-                        <p className="text-gray-500">Your registration has been confirmed. You now have full access to the platform.</p>
+                        <p className="text-gray-500">
+                            {orderId.startsWith('REG_')
+                                ? "Your registration has been confirmed. You now have full access to the platform."
+                                : "Your coaching session has been successfully booked and confirmed."}
+                        </p>
                         <div className="bg-gray-50 rounded-xl p-4 text-left space-y-2 text-sm border border-gray-100">
                             <div className="flex justify-between">
                                 <span className="text-gray-500">Order ID:</span>
@@ -86,7 +93,14 @@ function CallbackContent() {
                             </div>
                         </div>
                         <button
-                            onClick={() => router.push("/dashboard/coach")}
+                            onClick={() => {
+                                const role = localStorage.getItem('userRole');
+                                if (orderId.startsWith('BOOK_') || role === 'user') {
+                                    router.push("/dashboard/user");
+                                } else {
+                                    router.push("/dashboard/coach");
+                                }
+                            }}
                             className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all transform hover:scale-[1.02]"
                         >
                             Go to Dashboard
@@ -105,7 +119,13 @@ function CallbackContent() {
                             <p className="text-sm text-red-600 font-medium">Reason: {orderDetails.respMessage}</p>
                         )}
                         <button
-                            onClick={() => router.push("/dashboard/coachdashboard/registration-fee")}
+                            onClick={() => {
+                                if (orderId.startsWith('BOOK_')) {
+                                    router.push("/dashboard/userdashboard/coachdiscovery");
+                                } else {
+                                    router.push("/dashboard/coachdashboard/registration-fee");
+                                }
+                            }}
                             className="w-full py-3 px-6 bg-gray-900 hover:bg-black text-white rounded-xl font-bold transition-all transform hover:scale-[1.02]"
                         >
                             Try Again
@@ -121,7 +141,14 @@ function CallbackContent() {
                         <h2 className="text-2xl font-bold text-gray-900">Payment Pending</h2>
                         <p className="text-gray-500">Your payment is being processed by the bank. Please check back in a few minutes.</p>
                         <button
-                            onClick={() => router.push("/dashboard/coach")}
+                            onClick={() => {
+                                const role = localStorage.getItem('userRole');
+                                if (orderId.startsWith('BOOK_') || role === 'user') {
+                                    router.push("/dashboard/user");
+                                } else {
+                                    router.push("/dashboard/coach");
+                                }
+                            }}
                             className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all transform hover:scale-[1.02]"
                         >
                             Dashboard
@@ -137,7 +164,14 @@ function CallbackContent() {
                         <h2 className="text-2xl font-bold text-gray-900">Something Went Wrong</h2>
                         <p className="text-gray-500">{errorMessage}</p>
                         <button
-                            onClick={() => router.push("/dashboard/coach")}
+                            onClick={() => {
+                                const role = localStorage.getItem('userRole');
+                                if (role === 'mentor' || role === 'coach') {
+                                    router.push("/dashboard/coach");
+                                } else {
+                                    router.push("/dashboard/user");
+                                }
+                            }}
                             className="w-full py-3 px-6 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-bold transition-all"
                         >
                             Back to Dashboard

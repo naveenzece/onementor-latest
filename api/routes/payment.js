@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const checkAuth = require('../middleware/check-auth');
-const { verifyPayment, updatePaymentStatus, handleWebhook, createPayoutOrder, createPaymentSession, verifyWebhookSignature, getOrderStatus } = require("../services/paymentService");
+const { verifyPayment, updatePaymentStatus, handleWebhook, createPayoutOrder, createPaymentSession, createRegistrationFeeSession, verifyWebhookSignature, getOrderStatus } = require("../services/paymentService");
 const { generateOrderId, generateCustomerId } = require("../util/generators");
 const db = require("../config/mysql");
 
@@ -434,6 +434,187 @@ router.post("/payout", async (req, res) => {
 
 /**
  * @swagger
+ * /api/payment/booking-session:
+ *   post:
+ *     summary: Create booking and payment session in one call (bypasses Payout API)
+ *     description: Creates a booking record and returns a JUSPAY payment session. Does NOT use JUSPAY Payout API.
+ *     tags: [Payment]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - user_id
+ *               - mentor_id
+ *               - slot_ids
+ *               - amount
+ *             properties:
+ *               user_id:
+ *                 type: integer
+ *               mentor_id:
+ *                 type: integer
+ *               slot_ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *               amount:
+ *                 type: number
+ *               remark:
+ *                 type: string
+ *               return_url:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Booking and session created successfully
+ *       400:
+ *         description: Invalid request or slot already booked
+ *       500:
+ *         description: Server error
+ */
+router.post("/booking-session", async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const {
+      user_id,
+      mentor_id,
+      slot_ids,
+      amount,
+      remark,
+      return_url
+    } = req.body;
+
+    const slotIdsArray = Array.isArray(slot_ids) ? slot_ids : (slot_ids ? [slot_ids] : []);
+
+    if (!user_id || !mentor_id || slotIdsArray.length === 0 || !amount) {
+      await connection.rollback();
+      return res.status(400).json({ error: "user_id, mentor_id, slot_ids, and amount are required" });
+    }
+
+    // 1. Validate slots
+    const placeholders = slotIdsArray.map(() => '?').join(',');
+    const [slots] = await connection.query(
+      `SELECT id, mentor_id, date, start_time, end_time, is_booked, is_active 
+       FROM mentor_slots 
+       WHERE id IN (${placeholders}) AND mentor_id = ?`,
+      [...slotIdsArray, mentor_id]
+    );
+
+    if (slots.length !== slotIdsArray.length) {
+      await connection.rollback();
+      return res.status(400).json({ error: "Some slots not found or belong to different mentor" });
+    }
+
+    if (slots.some(s => s.is_booked || !s.is_active)) {
+      await connection.rollback();
+      return res.status(400).json({ error: "Some slots are already booked or inactive" });
+    }
+
+    // Sort to get first/last
+    const sortedSlots = slots.sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      if (dateA < dateB) return -1;
+      if (dateA > dateB) return 1;
+      return a.start_time.localeCompare(b.start_time);
+    });
+    const firstSlot = sortedSlots[0];
+    const lastSlot = sortedSlots[sortedSlots.length - 1];
+
+    // 2. Get user info (for session)
+    const [userData] = await connection.query("SELECT id, name, email, phone FROM users WHERE id = ?", [user_id]);
+    if (userData.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: "User not found" });
+    }
+    const user = userData[0];
+
+    // 3. Generate Order ID (prefix BOOK)
+    const orderId = generateOrderId('BOOK');
+    const customerId = generateCustomerId(user_id, user.email);
+
+    // 4. Create booking record
+    const [bookingResult] = await connection.query(
+      `INSERT INTO bookings 
+       (user_id, mentor_id, slots, status, session_date, session_start_time, session_end_time, 
+        amount, payment_status, payout_order_id, payout_order_status, notes)
+       VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, 'pending', ?, 'NEW', ?)`,
+      [
+        user_id,
+        mentor_id,
+        JSON.stringify(slotIdsArray),
+        firstSlot.date,
+        firstSlot.start_time,
+        lastSlot.end_time,
+        amount,
+        orderId, // Store BOOK_ order id in payout_order_id for compatibility
+        remark || null
+      ]
+    );
+
+    const bookingId = bookingResult.insertId;
+    await connection.commit();
+
+    // 5. Create Payment Session
+    let sessionResult;
+    const useJuspay = String(process.env.useJuspay || process.env.USE_JUSPAY || '').toLowerCase() === 'true' || process.env.USE_JUSPAY === '1';
+    if (useJuspay) {
+      sessionResult = await createPaymentSession({
+        order_id: orderId,
+        amount: amount.toString(),
+        customer_id: customerId,
+        customer_email: user.email,
+        customer_phone: user.phone || '',
+        first_name: user.name?.split(' ')[0] || '',
+        last_name: user.name?.split(' ').slice(1).join(' ') || '',
+        description: `Booking #${bookingId} - Mentorship Session`,
+        return_url: return_url || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/callback?order_id=${orderId}&booking_id=${bookingId}`,
+        metadata: {
+          booking_id: bookingId.toString()
+        }
+      });
+    } else {
+      console.log("Mocking booking session (USE_JUSPAY != true)");
+      sessionResult = {
+        success: true,
+        sessionId: 'mock_sess_' + Date.now(),
+        orderId: orderId,
+        status: 'NEW',
+        paymentLinks: {
+          web: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/userdashboard/userpayment?bookingId=${bookingId}&mock=true`
+        }
+      };
+    }
+
+    if (!sessionResult.success) {
+      return res.status(400).json({
+        error: sessionResult.error || "Failed to create payment session",
+        details: sessionResult.responseData
+      });
+    }
+
+    res.json({
+      message: "Booking created and payment session initiated successfully",
+      booking_id: bookingId,
+      order_id: orderId,
+      payment_url: sessionResult.paymentLinks?.web || null,
+      session: sessionResult
+    });
+
+  } catch (err) {
+    if (connection) await connection.rollback();
+    console.error("Booking session creation error:", err);
+    res.status(500).json({ error: "Server error", details: err.message });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+/**
+ * @swagger
  * /api/payment/session:
  *   post:
  *     summary: Create payment session for user to make payment
@@ -610,8 +791,10 @@ router.post("/session", async (req, res) => {
     // Create payment session
     // Create payment session
     let sessionResult;
+    const useJuspay = String(process.env.useJuspay || process.env.USE_JUSPAY || '').toLowerCase() === 'true' || process.env.USE_JUSPAY === '1';
+    console.log(`Payment Session: USE_JUSPAY=${process.env.USE_JUSPAY}, evaluated to=${useJuspay}`);
 
-    if (process.env.USE_JUSPAY === 'true') {
+    if (useJuspay) {
       sessionResult = await createPaymentSession({
         order_id: booking.payout_order_id, // Use payout_order_id as order_id
         amount: booking.amount.toString(),
@@ -621,7 +804,7 @@ router.post("/session", async (req, res) => {
         first_name: booking.first_name || booking.user_name?.split(' ')[0] || '',
         last_name: booking.last_name || booking.user_name?.split(' ').slice(1).join(' ') || '',
         description: description || `Payment for booking #${booking.id}`,
-        return_url: return_url || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/callback?booking_id=${booking.id}`,
+        return_url: return_url || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/callback?order_id=${booking.payout_order_id}&booking_id=${booking.id}`,
         payment_page_client_id: process.env.JUSPAY_CLIENT_ID,
         theme: theme || 'dark',
         metadata: {
@@ -675,6 +858,8 @@ router.post("/session", async (req, res) => {
     }
   }
 });
+
+
 
 /**
  * @swagger
@@ -897,6 +1082,11 @@ router.get("/status/:order_id", async (req, res) => {
     const result = await getOrderStatus(order_id);
 
     if (result.success) {
+      // Logic for Bookings (BOOK_ prefix)
+      if (order_id.startsWith('BOOK_')) {
+        await handleWebhook(result.responseData);
+      }
+
       // Logic for Registration Payments (REG_ prefix)
       if (order_id.startsWith('REG_')) {
         try {

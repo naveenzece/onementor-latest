@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
-import { ArrowLeftIcon, CalendarDaysIcon, ClockIcon, CurrencyRupeeIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, CalendarDaysIcon, ClockIcon, CurrencyRupeeIcon, CheckCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { getMentorProfile, getSlotsByMentor } from "@/services/mentor/mentor";
 import { getCalendarStatus, getCalendarAuthUrl } from "@/services/calendar/userCalendar";
 import { createBooking } from "@/services/payment/payment";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
-const BookSessionPage = () => {
+const BookSessionPageContent = () => {
   const [coach, setCoach] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedSlots, setSelectedSlots] = useState([]);
@@ -21,6 +21,8 @@ const BookSessionPage = () => {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [datesWithSlots, setDatesWithSlots] = useState([]);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const coachId = searchParams.get('coachId');
@@ -398,19 +400,29 @@ const BookSessionPage = () => {
       return;
     }
 
+    // Show custom modal instead of window.confirm
+    setIsModalOpen(true);
+  };
+
+  const confirmBooking = async () => {
+    setIsModalOpen(false);
     setLoading(true);
 
+    const userId = localStorage.getItem("userId");
+    const totalHours = calculateTotalHours(selectedSlots);
+    const perSlotRate = parseFloat(coach?.hourly_rate || 0) || 0;
+    const amountTotal = Math.round(perSlotRate * totalHours);
+
     try {
-      const perSlotRate = parseFloat(coach?.hourly_rate || 0) || 0;
-      const totalHours = calculateTotalHours(selectedSlots);
-      const amount = Math.round(perSlotRate * totalHours);
+      const amount = amountTotal;
 
       const bookingData = {
         user_id: parseInt(userId),
         mentor_id: parseInt(coachId),
         slot_ids: selectedSlots.map(s => s.id),
         amount,
-        remark: `Booking ${selectedSlots.length} session(s) - ${sessionType}`
+        remark: `Booking ${selectedSlots.map(s => `${s.start_time}-${s.end_time}`).join(', ')} - ${sessionType}`,
+        return_url: `${window.location.origin}/payment/callback`
       };
 
       const result = await createBooking(bookingData);
@@ -418,27 +430,28 @@ const BookSessionPage = () => {
       if (result.error) {
         throw new Error(result.error);
       }
-      toastrSuccess(result.message || "Booking request created. Redirecting to payment...");
 
-      // If API returns a payment URL, redirect
-      const paymentUrl = result?.payment_url || result?.payment?.payment_url || result?.payment_url_redirect;
-      const bookingId = result?.booking?.id || result?.booking_id || result?.id;
+      console.log("Booking created successfully:", result);
+
+      // The new API returns payment_url directly
+      const paymentUrl = result?.payment_url;
+      const bookingId = result?.booking_id || result?.booking?.id;
 
       if (paymentUrl) {
         localStorage.setItem("pendingBooking", JSON.stringify({
           bookingId: bookingId || null,
-          orderId: result?.payment?.order_id || result?.order_id || null
+          orderId: result?.order_id || null
         }));
-        setTimeout(() => {
-          window.location.href = paymentUrl;
-        }, 800);
-        return;
-      }
 
-      if (bookingId) {
-        router.push(`/dashboard/userdashboard/userpayment?bookingId=${bookingId}`);
+        // Final redirect to Juspay payment page
+        window.location.href = paymentUrl;
       } else {
-        router.push("/dashboard/user");
+        // Fallback if no payment_url but bookingId exists
+        if (bookingId) {
+          router.push(`/dashboard/userdashboard/userpayment?bookingId=${bookingId}`);
+        } else {
+          router.push("/dashboard/userdashboard/userbooking");
+        }
       }
     } catch (err) {
       console.error("Booking error:", err);
@@ -705,8 +718,92 @@ const BookSessionPage = () => {
         </div>
       </main>
 
+      {/* Confirmation Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden transform animate-in zoom-in-95 slide-in-from-bottom-10 duration-500">
+            <div className="relative p-8">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <XMarkIcon className="w-6 h-6 text-gray-400" />
+              </button>
+
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <CalendarDaysIcon className="w-8 h-8 text-[var(--primary)]" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900">Confirm Your Booking</h3>
+                <p className="text-gray-500 mt-2">Please review your session details</p>
+              </div>
+
+              <div className="bg-gray-50 rounded-2xl p-6 space-y-4 mb-8">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Coach</span>
+                  <span className="font-semibold text-gray-900">{coach.name}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Category</span>
+                  <span className="text-[var(--primary)] font-medium">{coach.expertise}</span>
+                </div>
+                <div className="flex justify-between items-start text-sm">
+                  <span className="text-gray-500">Date</span>
+                  <span className="font-semibold text-gray-900">{selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                </div>
+                <div className="flex justify-between items-start text-sm">
+                  <span className="text-gray-500">Time Slots</span>
+                  <div className="text-right">
+                    {selectedSlots.map(s => (
+                      <div key={s.id} className="font-semibold text-gray-900">
+                        {s.start_time} - {s.end_time}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="border-t border-gray-200 pt-4 flex justify-between items-center">
+                  <span className="text-lg font-bold text-gray-900">Total Amount</span>
+                  <span className="text-2xl font-bold text-[var(--primary)]">
+                    ₹{Math.round((parseFloat(coach?.hourly_rate || 0)) * calculateTotalHours(selectedSlots)).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-6 py-4 rounded-xl font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmBooking}
+                  className="px-6 py-4 rounded-xl font-semibold text-white bg-[var(--primary)] hover:opacity-90 shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <CheckCircleIcon className="w-5 h-5" />
+                  Proceed to Pay
+                </button>
+              </div>
+            </div>
+            <div className="bg-blue-50 p-4 text-center">
+              <p className="text-xs text-blue-600 font-medium">
+                You will be redirected to our secure payment gateway
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
+  );
+};
+
+const BookSessionPage = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <BookSessionPageContent />
+    </Suspense>
   );
 };
 

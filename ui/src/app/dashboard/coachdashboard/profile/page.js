@@ -35,6 +35,8 @@ const ProfileForm = () => {
 
   const [formData, setFormData] = useState({
     name: "",
+    email: "",
+    phone: "",
     expertise: "",
     customExpertise: "",
     bio: "",
@@ -97,7 +99,7 @@ const ProfileForm = () => {
       const response = await getMentorProfile(userId);
 
       if (response.error) {
-        // Profile doesn't exist yet, which is fine
+        // User not found or not a mentor
         return;
       }
 
@@ -114,7 +116,10 @@ const ProfileForm = () => {
       const shortForm = isFullText ? expertiseReverseMapping[category] : (isShortForm ? category : null);
 
       setFormData({
-        name: data.username || "",
+        // Fallback to u.name from users table if mp.username is missing
+        name: data.username || data.name || "",
+        email: data.email || "",
+        phone: data.phone || "",
         expertise: isCustom ? "other" : (shortForm || ""),
         customExpertise: isCustom ? (category || "") : "",
         bio: data.bio || "",
@@ -361,6 +366,32 @@ const ProfileForm = () => {
                   required
                   className="input-professional"
                   placeholder="John Doe"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  readOnly
+                  className="input-professional bg-gray-50 cursor-not-allowed"
+                  placeholder="email@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone Number
+                </label>
+                <input
+                  type="text"
+                  value={formData.phone}
+                  readOnly
+                  className="input-professional bg-gray-50 cursor-not-allowed"
+                  placeholder="Not provided"
                 />
               </div>
 

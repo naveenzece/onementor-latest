@@ -4,13 +4,13 @@ import MainHeader from "@/components/Header/mainHeader";
 import Footer from "@/components/Footer/footer";
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { verifyOTP, sendOTP } from "@/services/auth/auth";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 import Loader from "@/components/ui/loader/loader";
 
-export default function VerifyOtp() {
+function VerifyOtpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [otp, setOtp] = useState("");
@@ -117,12 +117,12 @@ export default function VerifyOtp() {
 
       <main className="flex-grow flex items-center justify-center px-6 py-16 md:py-20 lg:py-24 bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="w-full max-w-7xl grid md:grid-cols-2 gap-12 md:gap-16 lg:gap-20 items-start">
-          
+
           {/* Left Side - Information */}
           <div className="hidden md:flex flex-col justify-start space-y-10 fade-in pt-8">
             <div className="text-center space-y-6">
               <div className="inline-block">
-                <Image 
+                <Image
                   src="/images/onementor.jpg"
                   alt="OneMentor"
                   width={120}
@@ -218,7 +218,7 @@ export default function VerifyOtp() {
               >
                 {loading ? (
                   <div className="flex items-center justify-center">
-                    <div className="spinner mr-2" style={{width: '20px', height: '20px', borderWidth: '2px'}}></div>
+                    <div className="spinner mr-2" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
                     Verifying...
                   </div>
                 ) : (
@@ -252,6 +252,14 @@ export default function VerifyOtp() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function VerifyOtp() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VerifyOtpContent />
+    </Suspense>
   );
 }
 
