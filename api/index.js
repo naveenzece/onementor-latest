@@ -132,6 +132,10 @@ app.use("/api/user/calendar", userCalendarRoutes);
 const userSessionRoutes = require("./routes/user/sessions");
 app.use("/api/user/sessions", userSessionRoutes);
 
+// Mentor sessions
+const mentorSessionRoutes = require("./routes/coach/sessions");
+app.use("/api/mentor/sessions", mentorSessionRoutes);
+
 // Payment routes
 app.use("/api/payment", paymentRoutes);
 

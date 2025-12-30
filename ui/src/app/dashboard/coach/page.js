@@ -16,7 +16,7 @@ import { Clock, CheckCircle, XCircle, ExternalLink } from "lucide-react";
 import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { useRouter } from "next/navigation";
-import { getMentorProfile, getSlotsByMentor } from "@/services/mentor/mentor";
+import { getMentorProfile, getSlotsByMentor, getMentorUpcomingSessions } from "@/services/mentor/mentor";
 import { isVPAValid } from "@/services/profileService";
 
 export default function CoachDashboard() {
@@ -188,39 +188,11 @@ export default function CoachDashboard() {
       const userId = localStorage.getItem("userId");
       if (!userId) return;
 
-      const data = await getSlotsByMentor(userId);
+      const data = await getMentorUpcomingSessions(userId);
 
       if (data.error) throw new Error(data.error);
 
-      // Filter for booked slots that are in the future
-      const now = new Date();
-      const upcoming = (data || [])
-        .filter(slot => {
-          if (!slot.is_booked || slot.is_active === 0 || slot.is_active === '0') return false;
-
-          try {
-            // Create end datetime for the slot
-            const slotDate = new Date(slot.date);
-            const endTimeParts = slot.end_time ? slot.end_time.split(':') : ['23', '59'];
-            const [endHour, endMin] = endTimeParts.map(Number);
-
-            const slotEndDateTime = new Date(slotDate);
-            slotEndDateTime.setHours(endHour, endMin || 0, 0, 0);
-
-            // Only include future sessions
-            return slotEndDateTime >= now;
-          } catch (e) {
-            return false;
-          }
-        })
-        .sort((a, b) => {
-          // Sort by date and time
-          const dateA = new Date(a.date + 'T' + a.start_time);
-          const dateB = new Date(b.date + 'T' + b.start_time);
-          return dateA - dateB;
-        });
-
-      setUpcomingSessions(upcoming);
+      setUpcomingSessions(data || []);
     } catch (error) {
       console.error("Error fetching upcoming sessions:", error);
     }
@@ -373,97 +345,79 @@ export default function CoachDashboard() {
         </div>
 
         {/* Upcoming Sessions & Recent Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 mb-8">
           {/* Upcoming Sessions */}
-          <div className="card">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Upcoming Sessions</h2>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/20">
+              <h2 className="text-lg font-bold text-gray-900">Upcoming Sessions</h2>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{upcomingSessions.length} Scheduled</span>
+            </div>
 
-            {upcomingSessions.length === 0 ? (
-              <div className="text-center py-8">
-                <CalendarIcon className="w-16 h-16 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">No upcoming sessions</p>
-                <p className="text-sm text-gray-400 mt-1">Your booked sessions will appear here</p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-4">
-                  {upcomingSessions.slice(0, 5).map((session, index) => {
-                    const colors = [
-                      { bg: 'bg-blue-50', border: 'border-blue-200', avatar: 'bg-blue-600' },
-                      { bg: 'bg-green-50', border: 'border-green-200', avatar: 'bg-green-600' },
-                      { bg: 'bg-purple-50', border: 'border-purple-200', avatar: 'bg-purple-600' },
-                      { bg: 'bg-amber-50', border: 'border-amber-200', avatar: 'bg-amber-600' },
-                      { bg: 'bg-pink-50', border: 'border-pink-200', avatar: 'bg-pink-600' },
-                    ];
-                    const color = colors[index % colors.length];
-
-                    return (
-                      <div key={session.id} className={`p-4 ${color.bg} rounded-lg border ${color.border}`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div className={`w-12 h-12 rounded-full ${color.avatar} text-white flex items-center justify-center font-semibold text-sm`}>
-                              {getInitials(session.user_name || session.booked_by_name || "User")}
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900 mb-1">
-                                {session.user_name || session.booked_by_name || "User"}
-                              </p>
-                              <p className="text-sm text-gray-500">
-                                {session.start_time} - {session.end_time}
-                              </p>
-                            </div>
+            <div className="p-2">
+              {upcomingSessions.length === 0 ? (
+                <div className="text-center py-10">
+                  <CalendarIcon className="w-12 h-12 text-gray-200 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500 font-medium">No sessions scheduled</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {upcomingSessions.slice(0, 5).map((session) => (
+                    <div key={session.id} className="p-4 hover:bg-gray-50/80 transition-colors rounded-xl group">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs shrink-0 border border-indigo-100/50">
+                            {getInitials(session.user_name || session.booked_by_name || "User")}
                           </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <p className="text-sm font-medium text-gray-900 mb-1">
+                          <div className="min-w-0">
+                            <p className="text-base font-bold text-gray-900 truncate">
+                              {session.user_name || session.booked_by_name || "User"}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                              <span className="font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider">
                                 {formatSessionDate(session.date)}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                              </p>
+                              </span>
+                              <span>•</span>
+                              <span>{session.start_time} - {session.end_time}</span>
                             </div>
-                            {session.meeting_link ? (
-                              <a
-                                href={session.meeting_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                                title="Join Meeting"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                                Join
-                              </a>
-                            ) : (
-                              <button
-                                disabled
-                                className="flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-500 rounded-lg text-sm font-medium cursor-not-allowed"
-                                title="Meeting link not available"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                                No Link
-                              </button>
-                            )}
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
 
-                {upcomingSessions.length > 5 && (
-                  <button
-                    onClick={() => router.push('/dashboard/coachdashboard/sessions')}
-                    className="mt-6 w-full py-3 px-4 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 hover:border-[var(--primary)] hover:text-[var(--primary)] transition-all"
-                  >
-                    Show All ({upcomingSessions.length} sessions)
-                  </button>
-                )}
-              </>
-            )}
+                        <div className="flex items-center gap-3">
+                          {session.meeting_link ? (
+                            <a
+                              href={session.meeting_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[11px] font-bold hover:bg-indigo-700 transition-all flex items-center gap-1.5 whitespace-nowrap shadow-sm"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Join
+                            </a>
+                          ) : (
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                              No Link
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {upcomingSessions.length > 5 && (
+                    <button
+                      onClick={() => router.push('/dashboard/coachdashboard/sessions')}
+                      className="w-full py-3 text-[11px] font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/50 transition-colors uppercase tracking-widest"
+                    >
+                      View All Sessions
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Recent Activity */}
-          <div className="card">
+          {/* <div className="card">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Recent Activity</h2>
             <div className="space-y-6">
               <div className="flex items-center space-x-4 py-4 border-b border-gray-200">
@@ -496,7 +450,7 @@ export default function CoachDashboard() {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </main>
 

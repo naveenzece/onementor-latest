@@ -88,9 +88,10 @@ export default function SetupProgress({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {tasks.map((task, index) => {
           const Icon = task.icon;
-          const isClickable = !task.completed;
 
-          const isRegistrationFee = task.id === 'registration-fee';
+          // Step 1 is always enabled. Other steps are enabled only if the previous step is completed.
+          const isEnabled = index === 0 || tasks[index - 1].completed;
+          const isClickable = isEnabled && !task.completed;
           const isCompleted = task.completed;
 
           return (
@@ -100,63 +101,73 @@ export default function SetupProgress({
               className={`
                   relative p-6 rounded-xl border-2 transition-all duration-300 
                   ${isCompleted
-                  ? 'bg-green-50 border-green-300 hover:border-green-400 hover:shadow-lg  cursor-normal'
-                  : 'bg-white border-gray-300 hover:border-blue-400 hover:shadow-md cursor-pointer'
+                  ? 'bg-emerald-50 border-emerald-300 hover:border-emerald-400 cursor-default opacity-100 shadow-sm'
+                  : !isEnabled
+                    ? 'bg-gray-50 border-gray-200 cursor-not-allowed opacity-60 grayscale-[0.5]'
+                    : 'bg-white border-indigo-200 hover:border-indigo-400 hover:shadow-lg cursor-pointer'
                 }
                 `}
             >
               {/* Task Number Badge */}
               <div className={`
-                absolute -top-3 -left-3 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg
+                absolute -top-3 -left-3 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-transform
                 ${isCompleted
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-300 text-gray-700'
+                  ? 'bg-emerald-500 text-white scale-110'
+                  : !isEnabled
+                    ? 'bg-gray-200 text-gray-400'
+                    : 'bg-indigo-600 text-white shadow-md'
                 }
               `}>
                 {isCompleted ? (
                   <CheckCircleIconSolid className="w-6 h-6" />
                 ) : (
-                  <span>{index + 1}</span>
+                  <span className="text-sm uppercase tracking-tighter">{index + 1}</span>
                 )}
               </div>
 
-              {/* Lock Icon for incomplete tasks when all not done */}
-              {!allComplete && !isCompleted && (
-                <div className="absolute top-2 right-2">
+              {/* Status Icons */}
+              <div className="absolute top-3 right-3">
+                {isCompleted ? (
+                  <CheckCircleIconSolid className="w-5 h-5 text-emerald-500" />
+                ) : !isEnabled ? (
                   <LockClosedIcon className="w-5 h-5 text-gray-400" />
-                </div>
-              )}
+                ) : null}
+              </div>
 
               <div className="mt-4">
                 <div className="flex items-center space-x-3 mb-3">
-                  <div className={`p-2 rounded-lg ${isCompleted ? 'bg-green-100' : 'bg-gray-100'}`}>
+                  <div className={`p-2 rounded-lg ${isCompleted ? 'bg-emerald-100' : isEnabled ? 'bg-indigo-50' : 'bg-gray-100'}`}>
                     <Icon className={`
                       w-6 h-6
-                      ${isCompleted ? 'text-green-600' : 'text-gray-400'}
+                      ${isCompleted ? 'text-emerald-600' : isEnabled ? 'text-indigo-600' : 'text-gray-400'}
                     `} />
                   </div>
                   <h3 className={`
-                    text-lg font-bold
-                    ${isCompleted ? 'text-green-700' : 'text-gray-900'}
+                    text-base font-bold leading-tight
+                    ${isCompleted ? 'text-emerald-900' : isEnabled ? 'text-indigo-900' : 'text-gray-400'}
                   `}>
                     {task.title}
                   </h3>
                 </div>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className={`text-xs mb-4 leading-relaxed ${isEnabled ? 'text-gray-600' : 'text-gray-400'}`}>
                   {task.description}
                 </p>
+
                 {isCompleted ? (
-                  <div className="flex items-center space-x-2 text-green-600">
-                    <CheckCircleIconSolid className="w-5 h-5" />
-                    <span className="text-sm font-medium">Completed</span>
+                  <div className="flex items-center gap-1.5 text-emerald-600 text-[10px] font-bold uppercase tracking-widest">
+                    <CheckCircleIconSolid className="w-3.5 h-3.5" />
+                    Complete
+                  </div>
+                ) : !isEnabled ? (
+                  <div className="flex items-center gap-1.5 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+                    <LockClosedIcon className="w-3.5 h-3.5" />
+                    Locked
                   </div>
                 ) : (
-                  <div className="flex items-center space-x-2 text-blue-600">
-                    <span className="text-sm font-medium">
-                      Click to complete
-                    </span>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <div className="flex items-center gap-1.5 text-indigo-600 text-[10px] font-bold uppercase tracking-widest group-hover:gap-2 transition-all">
+                    Start Setup
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>
                 )}
