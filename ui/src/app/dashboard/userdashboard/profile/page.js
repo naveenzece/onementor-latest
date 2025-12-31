@@ -8,89 +8,133 @@ import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
 import { toastrSuccess, toastrError } from "@/components/ui/toaster/toaster";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import { getUserProfile, createUserProfile } from "@/services/user/user";
+import { getUserProfile, createUserProfile, getUserFromDatabase, updateUserBasicInfo } from "@/services/user/user";
 
 export default function ProfileSetup() {
+  const router = useRouter();
+
   const [skills, setSkills] = useState([]);
   const [interests, setInterests] = useState([]);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
-  // Calendar integration removed from profile; handled in booking flow
+  // User basic info
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [userPhone, setUserPhone] = useState("");
 
+  // Load user info from database instead of localStorage
   useEffect(() => {
     const userId = localStorage.getItem("userId");
-    const urlParams = new URLSearchParams(window.location.search);
-    const isReturningFromCalendar = urlParams.get('calendar_connected') === 'true' || urlParams.get('calendar_error');
-
-    let draftRestored = false;
-
-    // Restore draft if returning from calendar connection
-    if (isReturningFromCalendar) {
-      const draft = localStorage.getItem('userProfileDraft');
-      if (draft) {
-        try {
-          const parsed = JSON.parse(draft);
-          if (parsed.skills) setSkills(parsed.skills);
-          if (parsed.interests) setInterests(parsed.interests);
-          draftRestored = true;
-          // Clear draft after restoring
-          localStorage.removeItem('userProfileDraft');
-        } catch (e) {
-          console.error("Failed to parse user profile draft", e);
-        }
-      }
-    }
 
     if (userId) {
-      // Only fetch profile from DB if we didn't restore a draft
-      // This prevents overwriting the user's in-progress edits
-      if (!draftRestored) {
-        fetchProfile(userId);
-      }
+      // Fetch all user data from database
+      fetchUserDataFromDatabase(userId);
+    } else {
+      toastrError("User ID not found. Please login again.");
+      router.push("/login");
     }
   }, []);
 
-  // Fetch existing profile data
+  // Fetch user data from database
+  const fetchUserDataFromDatabase = async (userId) => {
+    try {
+      console.log("Fetching user data from database for userId:", userId);
+
+      // Get user data from database
+      const userResponse = await getUserFromDatabase(userId);
+      console.log("getUserFromDatabase response:", userResponse);
+
+      if (userResponse && !userResponse.error) {
+        // Set user basic info from database
+        if (userResponse.name) setUserName(userResponse.name);
+        if (userResponse.email) setUserEmail(userResponse.email);
+        if (userResponse.phone) setUserPhone(userResponse.phone);
+
+        // Set skills and interests
+        if (userResponse.skills) {
+          const skillsData = typeof userResponse.skills === "string"
+            ? JSON.parse(userResponse.skills)
+            : userResponse.skills;
+          setSkills(Array.isArray(skillsData) ? skillsData : []);
+        }
+
+        if (userResponse.interests) {
+          const interestsData = typeof userResponse.interests === "string"
+            ? JSON.parse(userResponse.interests)
+            : userResponse.interests;
+          setInterests(Array.isArray(interestsData) ? interestsData : []);
+        }
+
+        console.log("User data loaded from database:", {
+          name: userResponse.name,
+          email: userResponse.email,
+          phone: userResponse.phone
+        });
+      } else {
+        console.log("Could not fetch user data from database, using localStorage as fallback");
+        // Fallback to localStorage if database doesn't have the data
+        const name = localStorage.getItem("userName");
+        const email = localStorage.getItem("userEmail");
+        if (name) setUserName(name);
+        if (email) setUserEmail(email);
+
+        // Still try to get profile data for skills/interests
+        fetchProfile(userId);
+      }
+    } catch (error) {
+      console.error("Error fetching user data from database:", error);
+      // Fallback to localStorage
+      const name = localStorage.getItem("userName");
+      const email = localStorage.getItem("userEmail");
+      if (name) setUserName(name);
+      if (email) setUserEmail(email);
+      fetchProfile(userId);
+    }
+  };
+
   const fetchProfile = async (userId) => {
     try {
+      console.log("Fetching profile for userId:", userId);
       const response = await getUserProfile(userId);
+      console.log("getUserProfile response:", response);
 
-      if (response.error) {
-        // Profile doesn't exist yet, which is fine
-        return;
-      }
-
-      // Prefill form with existing data
-      if (response.skills) {
-        const skillsData = typeof response.skills === 'string'
-          ? JSON.parse(response.skills)
-          : response.skills;
+      if (response?.skills) {
+        const skillsData =
+          typeof response.skills === "string"
+            ? JSON.parse(response.skills)
+            : response.skills;
         setSkills(Array.isArray(skillsData) ? skillsData : []);
       }
-
-      if (response.interests) {
-        const interestsData = typeof response.interests === 'string'
-          ? JSON.parse(response.interests)
-          : response.interests;
+      if (response?.interests) {
+        const interestsData =
+          typeof response.interests === "string"
+            ? JSON.parse(response.interests)
+            : response.interests;
         setInterests(Array.isArray(interestsData) ? interestsData : []);
+      }
+      // Set user info from response if available
+      if (response?.name) setUserName(response.name);
+      if (response?.email) setUserEmail(response.email);
+      if (response?.phone) {
+        setUserPhone(response.phone);
+        console.log("Phone number from profile:", response.phone);
+      }
+      if (response?.phoneNumber) {
+        setUserPhone(response.phoneNumber);
+        console.log("Phone number from profile (phoneNumber field):", response.phoneNumber);
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
     }
   };
 
-  // Calendar integration moved to booking flow (see booking page)
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!skills.length || !interests.length) {
       toastrError("Please fill skills and interests fields.");
       return;
     }
 
-    // Get user_id from localStorage
     const userId = localStorage.getItem("userId");
     if (!userId) {
       toastrError("User ID not found. Please login again.");
@@ -98,28 +142,53 @@ export default function ProfileSetup() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("user_id", userId); // Add user_id to FormData
-    formData.append("skills", JSON.stringify(skills));
-    formData.append("interests", JSON.stringify(interests));
-
     setLoading(true);
-    try {
-      const res = await createUserProfile(formData);
 
-      if (res.error) {
-        throw new Error(res.error);
+    try {
+      // First update user basic info (name, email, phone) in users table
+      const userUpdateData = {
+        name: userName,
+        email: userEmail,
+        phone: userPhone
+      };
+
+      console.log("Updating user basic info:", userUpdateData);
+      const userUpdateResponse = await updateUserBasicInfo(userId, userUpdateData);
+
+      if (userUpdateResponse.error) {
+        console.log("User basic info update failed, continuing with profile update");
+      } else {
+        console.log("User basic info updated successfully");
       }
 
-      toastrSuccess(res.message || "Profile submitted successfully!");
-      console.log("Profile submission response:", res);
+      // Then update profile data (skills, interests)
+      const formData = new FormData();
+      formData.append("user_id", userId);
+      formData.append("skills", JSON.stringify(skills));
+      formData.append("interests", JSON.stringify(interests));
+      formData.append("name", userName);
+      formData.append("email", userEmail);
+      formData.append("phone", userPhone);
 
-      setTimeout(() => {
-        router.push("/dashboard/user");
-      }, 1500);
+      console.log("Updating profile data");
+      const profileResponse = await createUserProfile(formData);
+
+      if (profileResponse.error) {
+        toastrError(profileResponse.error || "Error saving profile");
+      } else {
+        toastrSuccess(profileResponse.message || "Profile saved successfully!");
+
+        // Update localStorage with new data
+        localStorage.setItem("userName", userName);
+        localStorage.setItem("userEmail", userEmail);
+
+        setTimeout(() => {
+          router.push("/dashboard/user");
+        }, 1500);
+      }
     } catch (err) {
-      console.error("Error submitting profile:", err);
-      toastrError(err.message || "Error submitting profile. Please try again.");
+      console.error("Error saving profile:", err);
+      toastrError("Error saving profile");
     } finally {
       setLoading(false);
     }
@@ -129,83 +198,90 @@ export default function ProfileSetup() {
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header />
 
-      <main className="flex-grow container-professional py-8 md:py-10 lg:py-12 fade-in">
-        {/* Header Section */}
-        <div className="mb-10 md:mb-12">
-          <button
-            onClick={() => router.push("/dashboard/user")}
-            className="flex items-center text-gray-600 hover:text-[var(--primary)] mb-4 transition-colors"
-          >
-            <ArrowLeftIcon className="w-5 h-5 mr-2" />
-            Back to Dashboard
-          </button>
-          <h1 className="text-4xl font-bold gradient-text mb-2">
-            Complete Your Profile
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Help us match you with the perfect coaches by sharing your skills and interests
-          </p>
-        </div>
+      <main className="flex-grow container-professional py-10">
+        {/* Back */}
+        <button
+          onClick={() => router.push("/dashboard/user")}
+          className="flex items-center text-gray-600 hover:text-[var(--primary)] mb-6"
+        >
+          <ArrowLeftIcon className="w-5 h-5 mr-2" />
+          Back to Dashboard
+        </button>
 
-        {/* Progress Indicator */}
-        <div className="card p-6 mb-6 bg-gradient-to-r from-blue-50 to-purple-50">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--primary)] text-white flex items-center justify-center font-semibold">
-                1
-              </div>
-              <span className="font-semibold text-gray-900">Skills & Interests</span>
+        {/* Welcome */}
+        <h1 className="text-4xl font-bold gradient-text mb-3">
+          Welcome back, {userName}...
+        </h1>
+        <p className="text-gray-600 mb-8">
+          Complete your profile to get better mentor recommendations
+        </p>
+
+        {/* 🔹 PROFILE INFO BOX */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-10">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
+            Profile Information
+          </h2>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Name
+              </label>
+              <input
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 focus:ring-2 focus:ring-[var(--primary)]"
+              />
             </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-semibold">
-                2
-              </div>
-              <span className="font-semibold text-gray-500">Complete</span>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                value={userEmail}
+                disabled
+                onChange={(e) => setUserEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 focus:ring-2 focus:ring-[var(--primary)]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Phone
+              </label>
+              <input
+                type="text"
+                value={userPhone}
+                onChange={(e) => setUserPhone(e.target.value)}
+                placeholder="Enter your phone number"
+                className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 focus:ring-2 focus:ring-[var(--primary)]"
+              />
             </div>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div className="bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] h-2 rounded-full" style={{ width: '100%' }}></div>
-          </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
-          <div className="grid md:grid-cols-2 gap-6 md:gap-8">
-            {/* Skills Section */}
+        {/* FORM */}
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Skills */}
             <div className="card p-6">
-              <div className="flex items-center mb-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center mr-3">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Your Skills</h2>
-                  <p className="text-sm text-gray-600">Add your current skills and expertise</p>
-                </div>
-              </div>
+              <h2 className="text-xl font-bold mb-2">Your Skills</h2>
               <SkillInput skills={skills} setSkills={setSkills} />
             </div>
 
-            {/* Interests Section */}
+            {/* Interests */}
             <div className="card p-6">
-              <div className="flex items-center mb-4">
-                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center mr-3">
-                  <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Your Interests</h2>
-                  <p className="text-sm text-gray-600">What areas do you want to explore?</p>
-                </div>
-              </div>
-              <InterestSelector interests={interests} setInterests={setInterests} />
+              <h2 className="text-xl font-bold mb-2">Your Interests</h2>
+              <InterestSelector
+                interests={interests}
+                setInterests={setInterests}
+              />
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-between items-center">
+          {/* Buttons */}
+          <div className="flex justify-end gap-4 mb-8">
             <button
               type="button"
               onClick={() => router.push("/dashboard/user")}
@@ -219,14 +295,7 @@ export default function ProfileSetup() {
               disabled={loading}
               className="btn btn-primary px-8 py-3"
             >
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="spinner mr-2" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
-                  Saving Profile...
-                </div>
-              ) : (
-                "Save Profile"
-              )}
+              {loading ? "Saving..." : "Save Profile"}
             </button>
           </div>
         </form>

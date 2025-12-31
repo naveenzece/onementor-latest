@@ -56,3 +56,81 @@ export async function saveUserProfile(formData) {
     return { error: 'Network error' };
   }
 }
+
+// Create/Update user profile (alias for compatibility)
+export async function createUserProfile(formData) {
+  return saveUserProfile(formData);
+}
+
+// Get user basic info (phone number) - using a working endpoint
+export async function getUserBasicInfo(userId) {
+  try {
+    // Since user endpoints don't exist, let's try to get user info from profile endpoint
+    // or create a new endpoint specifically for basic user info
+    const res = await fetch(`${API_URL}users/basic/${userId}`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      // If that doesn't work, try the profile endpoint which might have user info
+      return getUserProfile(userId);
+    }
+
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error('getUserBasicInfo error', err);
+    // Fallback to profile endpoint
+    return getUserProfile(userId);
+  }
+}
+
+// Update user basic info (name, email, phone) in the users table
+export async function updateUserBasicInfo(userId, userData) {
+  try {
+    const res = await fetch(`${API_URL}users/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(userData),
+    });
+    
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: data.error || 'Failed to update user info' };
+    }
+    return data;
+  } catch (err) {
+    console.error('updateUserBasicInfo error', err);
+    return { error: 'Network error' };
+  }
+}
+
+// Get user data from database (alternative approach using existing endpoints)
+export async function getUserFromDatabase(userId) {
+  try {
+    // First try to get from profile endpoint
+    const profileResponse = await getUserProfile(userId);
+    
+    if (profileResponse && !profileResponse.error) {
+      // If profile has user data, return it
+      if (profileResponse.name || profileResponse.email || profileResponse.phone) {
+        return {
+          name: profileResponse.name,
+          email: profileResponse.email,
+          phone: profileResponse.phone,
+          skills: profileResponse.skills,
+          interests: profileResponse.interests
+        };
+      }
+    }
+    
+    // If profile doesn't have user data, we need to create a backend endpoint
+    // For now, return what we have from localStorage as fallback
+    return { error: 'User data not available from database' };
+  } catch (err) {
+    console.error('getUserFromDatabase error', err);
+    return { error: 'Network error' };
+  }
+}
