@@ -31,27 +31,27 @@ const CoachCard = ({ coach }) => {
             {coach.name}
           </h3>
           
-         {/*  <p className="text-sm text-[var(--primary)] font-semibold mb-2">
+          <p className="text-sm text-[var(--primary)] font-semibold mb-2">
             {coach.expertise || "General Coaching"}
           </p>
           
           <p className="text-gray-600 text-sm mb-3 line-clamp-2">
             {coach.bio || "Experienced coach ready to help you achieve your goals."}
-          </p> */}
+          </p>
           
           <div className="space-y-2 mt-4 mb-4">
-            <div className="flex items-center justify-between text-sm">
+            {/* <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Rating:</span>
               <div className="flex items-center">
                 <span className="text-yellow-500 mr-1">★</span>
                 <span className="font-semibold">{coach.rating || "4.5"}</span>
               </div>
-            </div>
+            </div> */}
             
-            <div className="flex items-center justify-between text-sm">
+            {/* <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Sessions:</span>
               <span className="font-semibold">{coach.sessions_completed || "50+"}</span>
-            </div>
+            </div> */}
             
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Price:</span>

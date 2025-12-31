@@ -222,24 +222,38 @@ const BookSessionPageContent = () => {
 
         const allSlots = Array.isArray(allSlotsResponse) ? allSlotsResponse : [];
 
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const now = new Date();
+        const curH = now.getHours();
+        const curM = now.getMinutes();
+
         const uniqueDates = new Set();
         allSlots.forEach(slot => {
           if (slot.date) {
-            let dateStr = '';
-
+            let slotDate;
             if (typeof slot.date === 'string') {
-              dateStr = slot.date.split('T')[0].split(' ')[0];
+              const [y, m, d] = slot.date.split('T')[0].split(' ')[0].split('-').map(Number);
+              slotDate = new Date(y, m - 1, d, 0, 0, 0);
             } else if (slot.date instanceof Date) {
-              const year = slot.date.getFullYear();
-              const month = String(slot.date.getMonth() + 1).padStart(2, '0');
-              const day = String(slot.date.getDate()).padStart(2, '0');
-              dateStr = `${year}-${month}-${day}`;
+              slotDate = new Date(slot.date);
+              slotDate.setHours(0, 0, 0, 0);
             }
 
-            if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-              uniqueDates.add(dateStr);
-            } else {
-              console.warn("Invalid date format:", slot.date, "from slot:", slot);
+            if (slotDate) {
+              const dateStr = `${slotDate.getFullYear()}-${String(slotDate.getMonth() + 1).padStart(2, '0')}-${String(slotDate.getDate()).padStart(2, '0')}`;
+
+              // If it's today, only add if the time is in the future
+              if (slotDate.getTime() === today.getTime()) {
+                if (slot.start_time) {
+                  const [sh, sm] = slot.start_time.split(':').map(Number);
+                  if (sh > curH || (sh === curH && sm > curM)) {
+                    uniqueDates.add(dateStr);
+                  }
+                }
+              } else if (slotDate > today) {
+                uniqueDates.add(dateStr);
+              }
             }
           }
         });
@@ -315,7 +329,24 @@ const BookSessionPageContent = () => {
           };
         });
 
-        setAvailableSlots(formattedSlots);
+        let finalSlots = formattedSlots;
+
+        // If selected date is today, filter out past slots
+        const today = new Date();
+        const isToday = formatDate(selectedDate) === formatDate(today);
+
+        if (isToday) {
+          const now = new Date();
+          const currentHours = now.getHours();
+          const currentMinutes = now.getMinutes();
+
+          finalSlots = formattedSlots.filter(slot => {
+            const [startH, startM] = slot.start_time.split(':').map(Number);
+            return startH > currentHours || (startH === currentHours && startM > currentMinutes);
+          });
+        }
+
+        setAvailableSlots(finalSlots);
         setSelectedSlots([]); // reset selection on date change
       } catch (error) {
         console.error("Error fetching available slots:", error);
@@ -606,7 +637,11 @@ const BookSessionPageContent = () => {
                   renderDayContents={(dayOfMonth, date) => {
                     if (!date) return dayOfMonth;
                     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                    const hasSlot = datesWithSlots.some(d => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const isPast = date < today;
+
+                    const hasSlot = !isPast && datesWithSlots.some(d => {
                       const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                       return dStr === dateStr;
                     });

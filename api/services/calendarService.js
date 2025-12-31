@@ -222,14 +222,6 @@ async function createCalendarEvent(userId, eventData, role = 'mentor') {
         timeZone: 'UTC',
       },
       attendees: eventData.attendees?.map(email => ({ email })) || [],
-      conferenceData: {
-        createRequest: {
-          requestId: `meet-${Date.now()}`,
-          conferenceSolutionKey: {
-            type: 'hangoutsMeet'
-          }
-        }
-      },
       reminders: {
         useDefault: false,
         overrides: [
@@ -238,6 +230,20 @@ async function createCalendarEvent(userId, eventData, role = 'mentor') {
         ]
       }
     };
+
+    // If existing conference data is provided, use it. Otherwise create new Meet link.
+    if (eventData.conferenceData) {
+      event.conferenceData = eventData.conferenceData;
+    } else {
+      event.conferenceData = {
+        createRequest: {
+          requestId: `meet-${Date.now()}`,
+          conferenceSolutionKey: {
+            type: 'hangoutsMeet'
+          }
+        }
+      };
+    }
 
     const response = await calendar.events.insert({
       calendarId: 'primary',

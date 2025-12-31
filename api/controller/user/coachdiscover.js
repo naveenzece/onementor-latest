@@ -29,7 +29,8 @@ const getMentors = async (req, res) => {
         AND ms.date >= CURDATE()
       WHERE u.role = 'mentor' 
         AND u.is_active = 1
-    `;
+        AND mp.registered = 1
+`;
 
     const params = [];
 
@@ -66,9 +67,9 @@ const getMentors = async (req, res) => {
     console.log('Query Params:', params);
 
     const [rows] = await pool.query(query, params);
-    
+
     console.log(`Found ${rows.length} mentors`);
-    
+
     res.json(rows);
   } catch (error) {
     console.error('Error fetching mentors:', error);

@@ -250,19 +250,32 @@ router.get('/google/url', (req, res) => {
     `${process.env.API_BASE_URL || 'http://localhost:8001'}/api/auth/google/callback`
   );
 
-  const scopes = [
-    'https://www.googleapis.com/auth/calendar',
-    'https://www.googleapis.com/auth/calendar.events',
-    'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile'
-  ];
+  const isLogin = targetIntent === 'login';
 
-  const url = oauth2Client.generateAuthUrl({
+  const scopes = isLogin
+    ? [
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile'
+    ]
+    : [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile'
+    ];
+
+  const authOptions = {
     access_type: 'offline',
     scope: scopes,
-    prompt: 'consent', // Force consent to ensure we get refresh token
     state: JSON.stringify({ role: targetRole, intent: targetIntent })
-  });
+  };
+
+  // Only force consent for signup to ensure we get a refresh token for calendar
+  if (!isLogin) {
+    authOptions.prompt = 'consent';
+  }
+
+  const url = oauth2Client.generateAuthUrl(authOptions);
 
   res.json({ url });
 });

@@ -854,89 +854,92 @@ async function handleWebhook(webhookData) {
             const firstSlot = slotsData[0];
             const lastSlot = slotsData[slotsData.length - 1];
 
-            // Construct Start/End Dates
-            // Assumption: slots are on the same day or sequential. 
-            // For now, taking First Slot Start and Last Slot End. 
-            // Careful with Date + Time string construction.
-
-            const startDateTime = new Date(`${firstSlot.date.toISOString().split('T')[0]}T${firstSlot.start_time}`);
-            const endDateTime = new Date(`${lastSlot.date.toISOString().split('T')[0]}T${lastSlot.end_time}`);
-
             const timeSlotsList = slotsData.map(s => `${s.start_time} - ${s.end_time}`);
 
-            // 3. Create Google Calendar Event
-            const calendarService = require('../services/calendarService'); // Lazy load to avoid circular deps if any
+            // 3. Create Google Calendar Events (Separate event per slot)
+            const calendarService = require('../services/calendarService');
+            let sharedMeetLink = null;
+            let sharedConferenceData = null;
 
-            const eventData = {
-              summary: `Mentorship Session: ${student.name} with ${mentor.name}`,
-              description: `OneMentor Session.\n\nStudent: ${student.name}\nMentor: ${mentor.name}\n\n Slots: ${timeSlotsList.join(', ')}`,
-              start: startDateTime,
-              end: endDateTime,
-              attendees: [student.email, mentor.email]
-            };
+            for (let i = 0; i < slotsData.length; i++) {
+              const slot = slotsData[i];
+              const slotStart = new Date(`${slot.date.toISOString().split('T')[0]}T${slot.start_time}`);
+              const slotEnd = new Date(`${slot.date.toISOString().split('T')[0]}T${slot.end_time}`);
 
-            try {
-              // Create event on Mentor's Calendar (Assuming Mentor connected structure logic)
-              // Or prioritize System Admin Calendar? 
-              // Prompt implies "add the event in mentor google calendar and user google calendar"
-              // We can create it using the Mentor's credential if present.
+              const eventData = {
+                summary: `Mentorship Session: ${student.name} with ${mentor.name}`,
+                description: `OneMentor Session.\n\nStudent: ${student.name}\nMentor: ${mentor.name}\n\n Slot: ${slot.start_time} - ${slot.end_time}\nTotal Slots in this booking: ${slotsData.length}`,
+                start: slotStart,
+                end: slotEnd,
+                attendees: [student.email, mentor.email]
+              };
 
-              let calendarResult = null;
-              if (mentor.google_calendar_refresh_token) {
-                calendarResult = await calendarService.createCalendarEvent(booking.mentor_id, eventData, 'mentor');
-              } else if (student.google_calendar_refresh_token) {
-                // Fallback to student if mentor not connected? Usually Mentor hosts.
-                // Or just skip if no one connected?
-                console.log("Mentor calendar not connected, trying student...");
-                calendarResult = await calendarService.createCalendarEvent(booking.user_id, eventData, 'user');
-              } else {
-                console.log("No calendar credentials found for event creation.");
+              // If we already have conference data from the first slot, reuse it
+              if (sharedConferenceData) {
+                eventData.conferenceData = sharedConferenceData;
               }
 
-              if (calendarResult && calendarResult.meetLink) {
-                const meetLink = calendarResult.meetLink;
-                console.log("Google Meet Link Generated:", meetLink);
+              try {
+                let calendarResult = null;
+                if (mentor.google_calendar_refresh_token) {
+                  calendarResult = await calendarService.createCalendarEvent(booking.mentor_id, eventData, 'mentor');
+                } else if (student.google_calendar_refresh_token) {
+                  calendarResult = await calendarService.createCalendarEvent(booking.user_id, eventData, 'user');
+                }
 
-                // 4. Update Booking with Meet Link
-                await connection.query(
-                  `UPDATE bookings SET meeting_link = ? WHERE id = ?`,
-                  [meetLink, booking.id]
-                );
-
-                // 5. Send Emails
-                const { sendEmail } = require('../services/mailer');
-                const { generateSessionConfirmationEmail } = require('../utils/emailTemplates/sessionConfirmation');
-
-                const emailContent = generateSessionConfirmationEmail({
-                  studentName: student.name,
-                  mentorName: mentor.name,
-                  date: firstSlot.date.toDateString(),
-                  timeSlots: timeSlotsList,
-                  meetLink: meetLink,
-                  amount: booking.amount
-                });
-
-                // Send to Student
-                await sendEmail({
-                  to: student.email,
-                  subject: emailContent.subject,
-                  html: emailContent.html
-                });
-
-                // Send to Mentor
-                await sendEmail({
-                  to: mentor.email,
-                  subject: emailContent.subject,
-                  html: emailContent.html
-                });
-
-                console.log("Confirmation emails sent.");
-
+                if (calendarResult && calendarResult.meetLink) {
+                  // Capture the meet link and conference data from the first successful creation
+                  if (!sharedMeetLink) {
+                    sharedMeetLink = calendarResult.meetLink;
+                    // Extract conferenceData to reuse for other slots
+                    // response.data from google api contains conferenceData
+                    sharedConferenceData = {
+                      conferenceId: calendarResult.event.conferenceData.conferenceId,
+                      entryPoints: calendarResult.event.conferenceData.entryPoints,
+                      conferenceSolution: calendarResult.event.conferenceData.conferenceSolution
+                    };
+                  }
+                }
+              } catch (calErr) {
+                console.error(`Error creating calendar event for slot ${i}:`, calErr);
               }
+            }
 
-            } catch (calErr) {
-              console.error("Calendar/Email Automation Error:", calErr);
-              // Don't rollback payment for this, just log it.
+            if (sharedMeetLink) {
+              console.log("Google Meet Link Shared across slots:", sharedMeetLink);
+
+              // 4. Update Booking with Meet Link
+              await connection.query(
+                `UPDATE bookings SET meeting_link = ? WHERE id = ?`,
+                [sharedMeetLink, booking.id]
+              );
+
+              // 5. Send Email (One summary email for all slots)
+              const { sendEmail } = require('../services/mailer');
+              const { generateSessionConfirmationEmail } = require('../utils/emailTemplates/sessionConfirmation');
+
+              const emailContent = generateSessionConfirmationEmail({
+                studentName: student.name,
+                mentorName: mentor.name,
+                date: slotsData[0].date.toDateString(),
+                timeSlots: timeSlotsList,
+                meetLink: sharedMeetLink,
+                amount: booking.amount
+              });
+
+              await sendEmail({
+                to: student.email,
+                subject: emailContent.subject,
+                html: emailContent.html
+              });
+
+              await sendEmail({
+                to: mentor.email,
+                subject: emailContent.subject,
+                html: emailContent.html
+              });
+
+              console.log("Confirmation emails sent.");
             }
           }
         }
