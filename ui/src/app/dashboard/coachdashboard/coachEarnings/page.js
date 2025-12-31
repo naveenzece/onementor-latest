@@ -8,6 +8,7 @@ import { toastrError } from "@/components/ui/toaster/toaster";
 import Loader from "@/components/ui/loader/loader";
 import Header from "@/components/Header/header";
 import Footer from "@/components/Footer/footer";
+import { API_URL, APIENDPOINTS } from "@/services/apiendpoints";
 
 const EarningsPage = () => {
   const router = useRouter();
@@ -35,7 +36,7 @@ const EarningsPage = () => {
 
       setLoading(true);
       // Fetch both confirmed and completed bookings
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/mentor/requests/${userId}?status=confirmed,completed`);
+      const response = await axios.get(`${API_URL}/api/mentor/requests/${userId}?status=confirmed,completed`);
 
       const data = response.data || [];
       setSessions(data);

@@ -14,6 +14,10 @@ const options = {
         url: 'http://localhost:8001',
         description: 'Development server',
       },
+      {
+        url: 'https://api.onementor.in',
+        description: 'Production server',
+      }
     ],
     components: {
       securitySchemes: {
