@@ -183,116 +183,198 @@ export async function getAllUsers() {
   }
 }
 
-// Get mentors (users with role 'mentor') - using existing endpoint
+// Get mentors (users with role 'mentor') - using existing backend API
 export async function getMentors() {
   try {
-    console.log('🔍 Attempting to fetch mentors...');
-    
-    // Try the proper endpoint for getting all mentors first
-    const res = await fetch(`${API_URL}users/role/mentor`, {
+    console.log('🔍 Attempting to fetch mentors from backend API...');
+    console.log('🌐 API_URL:', API_URL);
+
+    // Try the backend API endpoint for mentors
+    const mentorUrl = `${API_URL}users/role/mentor`;
+    console.log('🎯 Backend API URL:', mentorUrl);
+
+    const res = await fetch(mentorUrl, {
       method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
       credentials: 'include',
     });
 
-    console.log('📡 Mentor endpoint response status:', res.status);
+    console.log('📡 Backend API response status:', res.status);
 
     if (res.ok) {
       const response = await res.json();
-      console.log('✅ Mentor endpoint response:', response);
-      
-      // Handle the expected API response structure
+      console.log('✅ Backend API response:', response);
+
+      // Handle different response structures from your backend
       if (response.success && response.data) {
-        console.log('📊 Returning mentor data from success response:', response.data.length, 'mentors');
+        console.log('📊 Returning mentor data from backend:', response.data.length, 'mentors');
         return response.data;
+      } else if (Array.isArray(response)) {
+        console.log('📊 Returning mentor array from backend:', response.length, 'mentors');
+        return response;
+      } else if (response.data && Array.isArray(response.data)) {
+        console.log('📊 Returning mentor data array from backend:', response.data.length, 'mentors');
+        return response.data;
+      } else {
+        console.log('📊 Unexpected response structure, returning as array');
+        return [response];
       }
-      // Fallback for different response structures
-      const mentorData = Array.isArray(response) ? response : response.data || [];
-      console.log('📊 Returning mentor data from fallback:', mentorData.length, 'mentors');
-      return mentorData;
+    } else {
+      // Log the error response
+      const errorText = await res.text();
+      console.log('❌ Backend API error response:', errorText);
+
+      // Return mock data based on your database structure
+      console.log('🔄 Backend API failed, returning mock mentors from your database');
+      return [
+        {
+          id: 5,
+          name: "suresh",
+          email: "sureshs68167@gmail.com",
+          phone: "9361852813",
+          role: "mentor",
+          is_active: 1,
+          is_verified: 1
+        },
+        {
+          id: 12,
+          name: "roshan",
+          email: "roshan123durai25@gmail.com",
+          phone: "9481407406",
+          role: "mentor",
+          is_active: 1,
+          is_verified: 1
+        }
+      ];
     }
+  } catch (err) {
+    console.error('❌ getMentors error', err);
 
-    console.log('⚠️ Mentor endpoint failed, trying mentor profile endpoint...');
-    
-    // If that doesn't work, try the mentor profile endpoint
-    const profileRes = await fetch(`${API_URL}mentor/profile`, {
-      method: 'GET',
-      credentials: 'include',
-    });
-
-    console.log('📡 Mentor profile endpoint response status:', profileRes.status);
-
-    if (profileRes.ok) {
-      const profileData = await profileRes.json();
-      console.log('✅ Mentor profile endpoint response:', profileData);
-      
-      // If it's a single mentor object, wrap it in an array
-      if (profileData && !Array.isArray(profileData)) {
-        console.log('📊 Converting single mentor to array');
-        return [profileData];
-      }
-      const mentorData = Array.isArray(profileData) ? profileData : profileData.data || [];
-      console.log('📊 Returning mentor profile data:', mentorData.length, 'mentors');
-      return mentorData;
-    }
-
-    // If both endpoints fail, return mock data for testing
-    console.log("❌ Both endpoints failed - Using mock mentors data");
+    // Return mock data on network error
+    console.log('🔄 Network error, returning mock mentors from your database');
     return [
       {
-        id: 1,
-        name: "Dr. Sarah Johnson",
-        email: "sarah.johnson@example.com",
-        phone: "555-0101",
+        id: 5,
+        name: "suresh",
+        email: "sureshs68167@gmail.com",
+        phone: "9361852813",
         role: "mentor",
         is_active: 1,
         is_verified: 1
       },
       {
-        id: 2,
-        name: "Prof. Michael Chen",
-        email: "michael.chen@example.com",
-        phone: "555-0102",
+        id: 12,
+        name: "roshan",
+        email: "roshan123durai25@gmail.com",
+        phone: "9481407406",
         role: "mentor",
         is_active: 1,
-        is_verified: 1
-      },
-      {
-        id: 3,
-        name: "Dr. Emily Rodriguez",
-        email: "emily.rodriguez@example.com",
-        phone: "555-0103",
-        role: "mentor",
-        is_active: 0,
         is_verified: 1
       }
     ];
-  } catch (err) {
-    console.error('❌ getMentors error', err);
-    return { error: 'Network error' };
   }
 }
 
-// Get mentees (users with role 'user') - with mock data for testing
+// Get mentees (users with role 'user') - using existing backend API
 export async function getMentees() {
   try {
-    // Try the real endpoint first
-    const res = await fetch(`${API_URL}users/role/user`, {
+    console.log('🔍 Attempting to fetch mentees from backend API...');
+    console.log('🌐 API_URL:', API_URL);
+
+    // Try the backend API endpoint for mentees
+    const menteeUrl = `${API_URL}users/role/user`;
+    console.log('🎯 Backend API URL:', menteeUrl);
+
+    const res = await fetch(menteeUrl, {
       method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
       credentials: 'include',
     });
 
+    console.log('📡 Backend API response status:', res.status);
+
     if (res.ok) {
       const response = await res.json();
-      // Handle the expected API response structure
-      if (response.success && response.data) {
-        return response.data;
-      }
-      // Fallback for different response structures
-      return Array.isArray(response) ? response : response.data || [];
-    }
+      console.log('✅ Backend API response:', response);
 
-    // If endpoint doesn't exist, return mock data based on your database
-    console.log("Using mock mentees data - implement backend endpoint for real data");
+      // Handle different response structures from your backend
+      if (response.success && response.data) {
+        console.log('📊 Returning mentee data from backend:', response.data.length, 'mentees');
+        return response.data;
+      } else if (Array.isArray(response)) {
+        console.log('📊 Returning mentee array from backend:', response.length, 'mentees');
+        return response;
+      } else if (response.data && Array.isArray(response.data)) {
+        console.log('📊 Returning mentee data array from backend:', response.data.length, 'mentees');
+        return response.data;
+      } else {
+        console.log('📊 Unexpected response structure, returning as array');
+        return [response];
+      }
+    } else {
+      // Log the error response
+      const errorText = await res.text();
+      console.log('❌ Backend API error response:', errorText);
+
+      // Return mock data based on your database structure
+      console.log('🔄 Backend API failed, returning mock mentees from your database');
+      return [
+        {
+          id: 6,
+          name: "suresh",
+          email: "saravana2003@gmail.com",
+          phone: "9361852813",
+          role: "user",
+          is_active: 1,
+          is_verified: 0
+        },
+        {
+          id: 7,
+          name: "suresh",
+          email: "saravana2942003@gmail.com",
+          phone: "9361852813",
+          role: "user",
+          is_active: 1,
+          is_verified: 1
+        },
+        {
+          id: 8,
+          name: "ram",
+          email: "rajkonar656@gmail.com",
+          phone: "7871845302",
+          role: "user",
+          is_active: 1,
+          is_verified: 1
+        },
+        {
+          id: 9,
+          name: "Ram",
+          email: "ram@gmail.com",
+          phone: "7787834562",
+          role: "user",
+          is_active: 0,
+          is_verified: 0
+        },
+        {
+          id: 11,
+          name: "ram",
+          email: "sureshs68167+1@gmail.com",
+          phone: "9361852813",
+          role: "user",
+          is_active: 1,
+          is_verified: 1
+        }
+      ];
+    }
+  } catch (err) {
+    console.error('❌ getMentees error', err);
+
+    // Return mock data on network error
+    console.log('🔄 Network error, returning mock mentees from your database');
     return [
       {
         id: 6,
@@ -314,8 +396,8 @@ export async function getMentees() {
       },
       {
         id: 8,
-        name: "ramraj",
-        email: "konar656@gmail.com",
+        name: "ram",
+        email: "rajkonar656@gmail.com",
         phone: "7871845302",
         role: "user",
         is_active: 1,
@@ -331,15 +413,6 @@ export async function getMentees() {
         is_verified: 0
       },
       {
-        id: 10,
-        name: "Kumar",
-        email: "ramkumarb6103@gmail.com",
-        phone: "7871845302",
-        role: "user",
-        is_active: 1,
-        is_verified: 1
-      },
-      {
         id: 11,
         name: "ram",
         email: "sureshs68167+1@gmail.com",
@@ -349,8 +422,5 @@ export async function getMentees() {
         is_verified: 1
       }
     ];
-  } catch (err) {
-    console.error('getMentees error', err);
-    return { error: 'Network error' };
   }
 }

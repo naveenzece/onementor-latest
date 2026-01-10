@@ -19,14 +19,14 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true);
     setError("");
-    
+
     try {
       console.log("🚀 Fetching mentors and mentees data...");
-      
+
       // Fetch mentors using existing endpoint
       const mentorResponse = await getMentors();
       console.log("👨‍🏫 Mentors response:", mentorResponse);
-      
+
       if (mentorResponse.error) {
         console.log("❌ Error fetching mentors:", mentorResponse.error);
         setMentors([]);
@@ -36,11 +36,11 @@ export default function AdminDashboard() {
         console.log("✅ Mentors loaded:", mentorsData.length, "mentors");
         console.log("📊 Mentor data structure:", mentorsData[0]);
       }
-      
+
       // Fetch mentees (now with mock data)
       const menteeResponse = await getMentees();
       console.log("👨‍🎓 Mentees response:", menteeResponse);
-      
+
       if (menteeResponse.error) {
         console.log("❌ Error fetching mentees:", menteeResponse.error);
         setMentees([]);
@@ -50,12 +50,12 @@ export default function AdminDashboard() {
         console.log("✅ Mentees loaded:", menteesData.length, "mentees");
         console.log("📊 Mentee data structure:", menteesData[0]);
       }
-      
-      // Show message about backend implementation
-      if (mentorResponse.error) {
-        setError("Backend endpoints need to be implemented. Currently showing mock data for mentees.");
+
+      // Show message about any errors
+      if (mentorResponse.error || menteeResponse.error) {
+        setError("Some data could not be loaded. Check console for details.");
       }
-      
+
     } catch (err) {
       console.error("💥 Error fetching data:", err);
       setError("Network error occurred while fetching data.");
@@ -76,22 +76,22 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {/* Backend Implementation Info
-      {!loading && (
+      {/* API Status Info */}
+      {/*{!loading && (
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-blue-800 text-sm font-medium">🚀 Dashboard Status</p>
+          <p className="text-blue-800 text-sm font-medium">🔗 Dashboard Status</p>
           <p className="text-blue-700 text-sm mt-1">
-            Currently showing mock data for mentees. Implement the backend endpoints for real-time data.
+            Connected to existing backend API. Displaying data from your database.
           </p>
           <div className="mt-2 text-xs text-blue-600">
-            <p className="font-medium">Next steps:</p>
+            <p className="font-medium">Backend API Endpoints:</p>
             <ul className="mt-1 ml-4 list-disc">
-              <li>Add the endpoints from <code>backend-endpoints-example.js</code> to your backend</li>
-              <li>Test with: <code>GET /api/users/role/user</code> and <code>GET /api/users/role/mentor</code></li>
+              <li><code>GET http://localhost:8001/api/users/role/mentor</code> - Fetch all mentors</li>
+              <li><code>GET http://localhost:8001/api/users/role/user</code> - Fetch all mentees</li>
             </ul>
           </div>
         </div>
-      )} */}
+      )}*/}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">
@@ -128,22 +128,20 @@ export default function AdminDashboard() {
         <div className="flex gap-3 p-4 border-b bg-slate-50 rounded-t-2xl">
           <button
             onClick={() => setActiveTab("mentors")}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
-              activeTab === "mentors"
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition ${activeTab === "mentors"
                 ? "bg-blue-600 text-white shadow"
                 : "text-slate-600 hover:bg-slate-200"
-            }`}
+              }`}
           >
             Mentors ({mentors.length})
           </button>
 
           <button
             onClick={() => setActiveTab("mentees")}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
-              activeTab === "mentees"
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition ${activeTab === "mentees"
                 ? "bg-emerald-600 text-white shadow"
                 : "text-slate-600 hover:bg-slate-200"
-            }`}
+              }`}
           >
             Mentees ({mentees.length})
           </button>
@@ -169,41 +167,40 @@ export default function AdminDashboard() {
 
               <tbody>
                 {(activeTab === "mentors" ? mentors : mentees)?.length > 0 ? (
-  (activeTab === "mentors" ? mentors : mentees).map((user, index) => (
-    <tr
-      key={user.id ?? index}
-      className="border-b last:border-0 hover:bg-slate-50 transition"
-    >
-      <td className="px-4 py-4 font-medium text-slate-800">
-        {user.name ?? "N/A"}
-      </td>
-      <td className="px-4 py-4 text-slate-500">
-        {user.email ?? "N/A"}
-      </td>
-      <td className="px-4 py-4 text-slate-500">
-        {user.phone ?? "N/A"}
-      </td>
-      <td className="px-4 py-4">
-<span
-  className={`px-2 py-1 rounded-full text-xs font-medium ${
-    Number(user.is_active) === 1
-      ? "bg-green-100 text-green-800"
-      : "bg-red-100 text-red-800"
-  }`}
->
-  {Number(user.is_active) === 1 ? "Active" : "Inactive"}
-</span>
+                  (activeTab === "mentors" ? mentors : mentees).map((user, index) => (
+                    <tr
+                      key={user.id ?? index}
+                      className="border-b last:border-0 hover:bg-slate-50 transition"
+                    >
+                      <td className="px-4 py-4 font-medium text-slate-800">
+                        {user.name ?? "N/A"}
+                      </td>
+                      <td className="px-4 py-4 text-slate-500">
+                        {user.email ?? "N/A"}
+                      </td>
+                      <td className="px-4 py-4 text-slate-500">
+                        {user.phone ?? "N/A"}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${Number(user.is_active) === 1
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                            }`}
+                        >
+                          {Number(user.is_active) === 1 ? "Active" : "Inactive"}
+                        </span>
 
-      </td>
-    </tr>
-  ))
-) : (
-  <tr>
-    <td colSpan="4" className="text-center py-6 text-slate-500">
-      No data available
-    </td>
-  </tr>
-)}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="4" className="text-center py-6 text-slate-500">
+                      No data available
+                    </td>
+                  </tr>
+                )}
 
               </tbody>
             </table>
