@@ -8,17 +8,46 @@ export default function Page() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const router = useRouter();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
-    // Only allow specific admin credentials
-    if (email === "prwebinfo@gmail.com" && password === "(prwebinfo@2026)") {
-      router.push("/admin/dashboard");
-    } else {
-      alert("Invalid admin credentials");
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/admin/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include cookies for session
+        body: JSON.stringify({
+          email,
+          password
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store admin data in localStorage for client-side access
+        localStorage.setItem('adminToken', data.data.token);
+        localStorage.setItem('adminData', JSON.stringify(data.data.admin));
+
+        // Redirect to admin dashboard
+        router.push("/admin/dashboard");
+      } else {
+        setError(data.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -36,6 +65,13 @@ export default function Page() {
           </p>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleLogin} className="space-y-4">
 
@@ -51,6 +87,7 @@ export default function Page() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@example.com"
               className="mt-1 w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              disabled={isLoading}
             />
           </div>
 
@@ -67,11 +104,13 @@ export default function Page() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-2.5 text-slate-500"
+                disabled={isLoading}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -81,9 +120,10 @@ export default function Page() {
           {/* Submit */}
           <button
             type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition"
+            disabled={isLoading}
+            className="w-full py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Login
+            {isLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 

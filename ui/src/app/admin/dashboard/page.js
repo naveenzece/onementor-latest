@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, UserCheck } from "lucide-react";
+import { Users, UserCheck, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { getMentors, getMentees, getAllUsers } from "@/services/user/user";
+import { adminAuth } from "@/utils/adminAuth";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("mentors"); // ✅ default mentors
@@ -10,11 +12,44 @@ export default function AdminDashboard() {
   const [mentees, setMentees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [adminData, setAdminData] = useState(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const router = useRouter();
 
 
   useEffect(() => {
+    // Check if admin is authenticated
+    if (!adminAuth.isAuthenticated()) {
+      router.push('/admin');
+      return;
+    }
+    
+    // Get admin data
+    const admin = adminAuth.getAdminData();
+    setAdminData(admin);
+    
     fetchData();
-  }, []);
+  }, [router]);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    
+    try {
+      // Call logout API and clear local storage
+      await adminAuth.logout();
+      
+      // Redirect to home page
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if API call fails, clear local storage and redirect
+      adminAuth.logout();
+      router.push('/');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -67,13 +102,30 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-slate-100 px-6 py-8">
       {/* Header */}
-      <div className="mb-10">
-        <h1 className="text-3xl font-semibold text-slate-800">
-          Admin Dashboard
-        </h1>
-        <p className="text-slate-500 mt-1">
-          Monitor mentors and mentees activity
-        </p>
+      <div className="mb-10 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-semibold text-slate-800">
+            Admin Dashboard
+          </h1>
+          <p className="text-slate-500 mt-1">
+            Monitor mentors and mentees activity
+            {adminData && (
+              <span className="ml-2 text-blue-600">
+                • Welcome, {adminData.name}
+              </span>
+            )}
+          </p>
+        </div>
+        
+        {/* Logout Button */}
+        <button
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <LogOut size={18} />
+          {isLoggingOut ? 'Logging out...' : 'Logout'}
+        </button>
       </div>
 
       {/* API Status Info */}
